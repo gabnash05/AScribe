@@ -1,20 +1,28 @@
 #!/usr/bin/env node
-import * as cdk from 'aws-cdk-lib';
-import { InfraStack } from '../lib/infra-stack';
+import {App, StackProps} from 'aws-cdk-lib';
+import { AuthStack } from '../lib/AuthStack';
+import { APIGatewayStack } from '../lib/APIGatewayStack';
 
-const app = new cdk.App();
-new InfraStack(app, 'InfraStack', {
-  /* If you don't specify 'env', this stack will be environment-agnostic.
-   * Account/Region-dependent features and context lookups will not work,
-   * but a single synthesized template can be deployed anywhere. */
+const app = new App();
 
-  /* Uncomment the next line to specialize this stack for the AWS Account
-   * and Region that are implied by the current CLI configuration. */
-  // env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+const env: StackProps = {
+    env: {
+        account: process.env.CDK_DEFAULT_ACCOUNT,
+        region: process.env.CDK_DEFAULT_REGION,
+    },
+}
 
-  /* Uncomment the next line if you know exactly what Account and Region you
-   * want to deploy the stack to. */
-  // env: { account: '123456789012', region: 'us-east-1' },
+const authStack = new AuthStack(app, 'AuthStack', env);
 
-  /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
-});
+// new APIGatewayStack(app, 'StudentDocAPIGatewayStack', {
+//     ...env,
+//     userPool: authStack.userPool,
+//     userPoolClient: authStack.userPoolClient,
+//     uploadLambda: lambdaStack.uploadLambda,
+//     finalizeLambda: lambdaStack.finalizeLambda,
+//     summarizeLambda: lambdaStack.summarizeLambda,
+//     searchLambda: lambdaStack.searchLambda,
+//     getLambda: lambdaStack.getLambda,
+//     deleteLambda: lambdaStack.deleteLambda,
+//     updateLambda: lambdaStack.updateLambda,
+// });
