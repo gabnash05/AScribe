@@ -57,4 +57,4 @@ export class AuthStack extends Stack {
             },
         });
     }
-}   
+}
