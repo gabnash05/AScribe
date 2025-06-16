@@ -11,7 +11,7 @@ export class StorageStack extends Stack {
         
         this.documentBucket = new Bucket(this, 'DocumentBucket', {
             bucketName: 'ascribe-document-bucket',
-            removalPolicy: RemovalPolicy.RETAIN, // retain data across stack deletions
+            removalPolicy: RemovalPolicy.DESTROY, // Change to RETAIN in production
             encryption: BucketEncryption.S3_MANAGED,
             blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
             cors: [
