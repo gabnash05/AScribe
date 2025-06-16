@@ -65,7 +65,7 @@ export class DatabaseStack extends Stack {
         this.questionsTable = new Table(this, 'QuestionsTable', {
             tableName: 'AScribeQuestions',
             partitionKey: { name: 'documentId', type: AttributeType.STRING },
-            sortKey: { name: 'quizId', type: AttributeType.STRING },
+            sortKey: { name: 'questionsId', type: AttributeType.STRING },
             removalPolicy: RemovalPolicy.DESTROY, // TODO: Change to RETAIN in production
             billingMode: BillingMode.PAY_PER_REQUEST,
         });
@@ -73,6 +73,7 @@ export class DatabaseStack extends Stack {
         // Attributes:
         // - questionsId: string (PK)
         // - documentId: string (Sort Key / FK)
+        // - tags: string[] (optional, for categorization)
         // - question: string
         // - choices: string[] (optional, for multiple choice)
         // - answer: string
