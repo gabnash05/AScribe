@@ -20,6 +20,12 @@ export class AuthStack extends Stack {
                 username: true,
                 phone: false
             },
+            passwordPolicy: {
+                minLength: 8,
+                requireDigits: true,
+                requireLowercase: true,
+                requireUppercase: true,
+            },
             autoVerify: {
                 email: true,
             },

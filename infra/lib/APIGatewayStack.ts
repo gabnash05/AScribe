@@ -9,13 +9,23 @@ interface APIGatewayStackProps extends StackProps {
     userPoolClient: UserPoolClient;
     uploadLambda: IFunction;
     finalizeUploadLambda: IFunction;
-    searchLambda: IFunction;
     getDocumentLambda: IFunction;
-    deleteDocumentLambda: IFunction;
+    getDocumentsLambda: IFunction;
     updateDocumentLambda: IFunction;
-    summarizeLambda: IFunction;
-    generateFlashCardsLambda: IFunction;
-    generateQuizLambda: IFunction;
+    deleteDocumentLambda: IFunction;
+    getExtractedTextLambda: IFunction;
+    updateExtractedTextLambda: IFunction;
+    deleteExtractedTextLambda: IFunction;
+    updateTagsLambda: IFunction;
+    createSummaryLambda: IFunction;
+    getSummaryLambda: IFunction;
+    updateSummaryLambda: IFunction;
+    deleteSummaryLambda: IFunction;
+    createQuestionsLambda: IFunction;
+    getQuestionsLambda: IFunction;
+    getQuestionLambda: IFunction;
+    updateQuestionLambda: IFunction;
+    deleteQuestionLambda: IFunction;
 }
 
 export class APIGatewayStack extends Stack {
@@ -28,13 +38,23 @@ export class APIGatewayStack extends Stack {
             userPool,
             uploadLambda,
             finalizeUploadLambda,
-            searchLambda,
             getDocumentLambda,
-            deleteDocumentLambda,
+            getDocumentsLambda,
             updateDocumentLambda,
-            summarizeLambda,
-            generateFlashCardsLambda,
-            generateQuizLambda
+            deleteDocumentLambda,
+            getExtractedTextLambda,
+            updateExtractedTextLambda,
+            deleteExtractedTextLambda,
+            updateTagsLambda,
+            createSummaryLambda,
+            getSummaryLambda,
+            updateSummaryLambda,
+            deleteSummaryLambda,
+            createQuestionsLambda,
+            getQuestionsLambda,
+            getQuestionLambda,
+            updateQuestionLambda,
+            deleteQuestionLambda,
         } = props;
 
         this.restApi = new RestApi(this, 'AScribeRestApi', {
@@ -50,23 +70,39 @@ export class APIGatewayStack extends Stack {
             cognitoUserPools: [userPool],
         });
 
-        this.addLambdaRoute('upload', 'POST', uploadLambda, authorizer);
-        this.addLambdaRoute('finalizeUpload', 'POST', finalizeUploadLambda, authorizer);
-        this.addLambdaRoute('search', 'GET', searchLambda, authorizer);
-        this.addLambdaRoute('get', 'GET', getDocumentLambda, authorizer);
-        this.addLambdaRoute('delete', 'DELETE', deleteDocumentLambda, authorizer);
-        this.addLambdaRoute('update', 'PUT', updateDocumentLambda, authorizer);
-        this.addLambdaRoute('summarize', 'GET', summarizeLambda, authorizer);
-        this.addLambdaRoute('generateFlashCards', 'POST', generateFlashCardsLambda, authorizer);
-        this.addLambdaRoute('generateQuiz', 'POST', generateQuizLambda, authorizer);
+        // Documents
+        this.addLambdaRoute('documents', 'POST', uploadLambda, authorizer);
+        this.addLambdaRoute('documents', 'GET', getDocumentsLambda, authorizer);
+
+        this.addLambdaRoute('documents/{documentId}', 'GET', getDocumentLambda, authorizer);
+        this.addLambdaRoute('documents/{documentId}', 'PUT', updateDocumentLambda, authorizer);
+        this.addLambdaRoute('documents/{documentId}', 'DELETE', deleteDocumentLambda, authorizer);
+
+        this.addLambdaRoute('documents/{documentId}/finalize', 'POST', finalizeUploadLambda, authorizer);
+        this.addLambdaRoute('documents/{documentId}/tags', 'PUT', updateTagsLambda, authorizer);
+
+        // Extracted Text
+        this.addLambdaRoute('documents/{documentId}/text', 'GET', getExtractedTextLambda, authorizer);
+        this.addLambdaRoute('documents/{documentId}/text', 'PUT', updateExtractedTextLambda, authorizer);
+        this.addLambdaRoute('documents/{documentId}/text', 'DELETE', deleteExtractedTextLambda, authorizer);
+
+        // Summary
+        this.addLambdaRoute('documents/{documentId}/summary', 'POST', createSummaryLambda, authorizer);
+        this.addLambdaRoute('documents/{documentId}/summary', 'GET', getSummaryLambda, authorizer);
+        this.addLambdaRoute('documents/{documentId}/summary', 'PUT', updateSummaryLambda, authorizer);
+        this.addLambdaRoute('documents/{documentId}/summary', 'DELETE', deleteSummaryLambda, authorizer);
+
+        // Questions
+        this.addLambdaRoute('documents/{documentId}/questions', 'POST', createQuestionsLambda, authorizer);
+        this.addLambdaRoute('documents/{documentId}/questions', 'GET', getQuestionsLambda, authorizer);
+
+        this.addLambdaRoute('documents/{documentId}/questions/{questionId}', 'GET', getQuestionLambda, authorizer);
+        this.addLambdaRoute('documents/{documentId}/questions/{questionId}', 'PUT', updateQuestionLambda, authorizer);
+        this.addLambdaRoute('documents/{documentId}/questions/{questionId}', 'DELETE', deleteQuestionLambda, authorizer);
+        // Add any additional routes as needed
     }
 
-    private addLambdaRoute(
-        path: string,
-        method: string,
-        lambdaFn: IFunction,
-        authorizer: CognitoUserPoolsAuthorizer
-    ): void {
+    private addLambdaRoute(path: string, method: string, lambdaFn: IFunction, authorizer: CognitoUserPoolsAuthorizer): void {
         const resource = this.restApi.root.addResource(path);
         resource.addMethod(method, new LambdaIntegration(lambdaFn), {
             authorizationType: AuthorizationType.COGNITO,
