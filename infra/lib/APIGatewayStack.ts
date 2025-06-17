@@ -26,6 +26,7 @@ interface APIGatewayStackProps extends StackProps {
     getQuestionLambda: IFunction;
     updateQuestionLambda: IFunction;
     deleteQuestionLambda: IFunction;
+    searchDocumentsLambda: IFunction;
 }
 
 export class APIGatewayStack extends Stack {
@@ -55,6 +56,7 @@ export class APIGatewayStack extends Stack {
             getQuestionLambda,
             updateQuestionLambda,
             deleteQuestionLambda,
+            searchDocumentsLambda
         } = props;
 
         this.restApi = new RestApi(this, 'AScribeRestApi', {
@@ -99,6 +101,10 @@ export class APIGatewayStack extends Stack {
         this.addLambdaRoute('documents/{documentId}/questions/{questionId}', 'GET', getQuestionLambda, authorizer);
         this.addLambdaRoute('documents/{documentId}/questions/{questionId}', 'PUT', updateQuestionLambda, authorizer);
         this.addLambdaRoute('documents/{documentId}/questions/{questionId}', 'DELETE', deleteQuestionLambda, authorizer);
+
+        // Search
+        this.addLambdaRoute('documents/search', 'POST', searchDocumentsLambda, authorizer);
+        
         // Add any additional routes as needed
     }
 

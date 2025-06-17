@@ -42,6 +42,8 @@ export class ComputeStack extends Stack {
     public readonly updateQuestionLambda: NodejsFunction;
     public readonly deleteQuestionLambda: NodejsFunction;
 
+    // Search Handlers
+    public readonly searchDocumentsLambda: NodejsFunction;
 
     constructor(scope: Construct, id: string, props: ComputeStackProps) {
         super(scope, id, props);
@@ -93,13 +95,28 @@ export class ComputeStack extends Stack {
         this.updateQuestionLambda = this.createLambda('updateQuestion', 'Questions', lambdaProps);
         this.deleteQuestionLambda = this.createLambda('deleteQuestion', 'Questions', lambdaProps);
 
-        // Grant S3 permissions (adjust as needed)
+        // Search Lambda function
+        this.searchDocumentsLambda = this.createLambda('searchDocuments', 'Search', lambdaProps);
+
+        // S3 Permissions
         documentBucket.grantReadWrite(this.uploadLambda);
         documentBucket.grantReadWrite(this.finalizeUploadLambda);
         documentBucket.grantRead(this.getDocumentLambda);
+        documentBucket.grantRead(this.getDocumentsLambda);
         documentBucket.grantWrite(this.updateDocumentLambda);
+        documentBucket.grantWrite(this.deleteDocumentLambda);
 
-        // Grant DynamoDB permissions for Documents Table
+        // These Lambdas do not modify files in S3, only read references
+        documentBucket.grantRead(this.getExtractedTextLambda);
+        documentBucket.grantRead(this.getSummaryLambda);
+        documentBucket.grantRead(this.getQuestionsLambda);
+        documentBucket.grantRead(this.searchDocumentsLambda);
+
+        // ----------------------------
+        // DynamoDB Permissions
+        // ----------------------------
+
+        // Documents Table
         documentsTable.grantReadWriteData(this.uploadLambda);
         documentsTable.grantReadWriteData(this.finalizeUploadLambda);
         documentsTable.grantReadData(this.getDocumentLambda);
@@ -107,29 +124,34 @@ export class ComputeStack extends Stack {
         documentsTable.grantReadWriteData(this.updateDocumentLambda);
         documentsTable.grantReadWriteData(this.deleteDocumentLambda);
         documentsTable.grantReadWriteData(this.updateTagsLambda);
+
+        // If summaries and questions require metadata from the documents table:
         documentsTable.grantReadData(this.createSummaryLambda);
         documentsTable.grantReadData(this.createQuestionsLambda);
 
-        // Grant DynamoDB permissions for ExtractedTexts Table
+        // ExtractedTexts Table
         extractedTextsTable.grantWriteData(this.finalizeUploadLambda);
         extractedTextsTable.grantReadData(this.getExtractedTextLambda);
         extractedTextsTable.grantReadWriteData(this.updateExtractedTextLambda);
         extractedTextsTable.grantReadWriteData(this.deleteExtractedTextLambda);
+
+        // Needed for generating summaries/questions from extracted text
         extractedTextsTable.grantReadData(this.createSummaryLambda);
         extractedTextsTable.grantReadData(this.createQuestionsLambda);
 
-        // Grant DynamoDB permissions for Summaries Table
+        // Summaries Table
         summariesTable.grantWriteData(this.createSummaryLambda);
         summariesTable.grantReadData(this.getSummaryLambda);
         summariesTable.grantReadWriteData(this.updateSummaryLambda);
         summariesTable.grantReadWriteData(this.deleteSummaryLambda);
 
-        // Grant DynamoDB permissions for Questions Table
+        // Questions Table
         questionsTable.grantWriteData(this.createQuestionsLambda);
         questionsTable.grantReadData(this.getQuestionsLambda);
         questionsTable.grantReadData(this.getQuestionLambda);
         questionsTable.grantReadWriteData(this.updateQuestionLambda);
         questionsTable.grantReadWriteData(this.deleteQuestionLambda);
+
     }
 
     private createLambda(name: string, handlerType: string, commonProps: any): NodejsFunction {
