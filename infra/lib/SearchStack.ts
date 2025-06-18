@@ -1,4 +1,4 @@
-import { Stack, StackProps, RemovalPolicy, CfnOutput, Duration } from 'aws-cdk-lib';
+import { Stack, StackProps, RemovalPolicy, CfnOutput, Duration, CfnCustomResource } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { Domain, EngineVersion } from 'aws-cdk-lib/aws-opensearchservice';
 import { Role, ServicePrincipal, PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
@@ -6,85 +6,101 @@ import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { EbsDeviceVolumeType } from 'aws-cdk-lib/aws-ec2';
 
 interface SearchStackProps extends StackProps {
-  finalizeUploadLambda: IFunction;
-  searchLambda: IFunction;
+    finalizeUploadLambda: IFunction;
+    searchLambda: IFunction;
+    updateExtractedTextLambda: IFunction;
+    updateTagsLambda: IFunction;
+    deleteExtractedTextLambda: IFunction;
+    updateSummaryLambda: IFunction;
+    deleteSummaryLambda: IFunction;
+    updateQuestionLambda: IFunction;
+    deleteQuestionLambda: IFunction;
+    initializeSearchIndexLambda: IFunction;
 }
 
 export class SearchStack extends Stack {
-  public readonly searchDomain: Domain;
+    public readonly searchDomain: Domain;
 
-  constructor(scope: Construct, id: string, props: SearchStackProps) {
-    super(scope, id, props);
+    constructor(scope: Construct, id: string, props: SearchStackProps) {
+        super(scope, id, props);
 
-    // IAM role for Lambda functions to access OpenSearch
-    const osAccessRole = new Role(this, 'OpenSearchAccessRole', {
-      assumedBy: new ServicePrincipal('lambda.amazonaws.com'),
-    });
+        // Create OpenSearch domain
+        this.searchDomain = new Domain(this, 'AScribeSearchDomain', {
+            version: EngineVersion.OPENSEARCH_2_9,
+            domainName: 'ascribe-search',
+            capacity: {
+                dataNodes: 1,
+                dataNodeInstanceType: 't3.small.search', // Small instance for development
+            },
+            ebs: {
+                volumeSize: 5,
+                volumeType: EbsDeviceVolumeType.GP2,
+            },
+            zoneAwareness: {
+                enabled: false, // Enable in production for HA
+            },
+            removalPolicy: RemovalPolicy.DESTROY, // TODO: Change to RETAIN in production
+            enforceHttps: true,
+            nodeToNodeEncryption: true,
+            encryptionAtRest: {
+                enabled: true,
+            },
+            fineGrainedAccessControl: {
+                masterUserName: 'admin',
+            },
+        });
 
-    // Create OpenSearch domain
-    this.searchDomain = new Domain(this, 'AScribeSearchDomain', {
-      version: EngineVersion.OPENSEARCH_2_9,
-      domainName: 'ascribe-search',
-      capacity: {
-        masterNodes: props.env?.region === 'us-east-1' ? 3 : 1, // 3 masters required in us-east-1
-        dataNodes: 1,
-        dataNodeInstanceType: 't3.small.search', // Small instance for development
-      },
-      ebs: {
-        volumeSize: 10,
-        volumeType: EbsDeviceVolumeType.GP2,
-      },
-      zoneAwareness: {
-        enabled: false, // Enable in production for HA
-      },
-      removalPolicy: RemovalPolicy.DESTROY, // Change to RETAIN in production
-      enforceHttps: true,
-      nodeToNodeEncryption: true,
-      encryptionAtRest: {
-        enabled: true,
-      },
-      fineGrainedAccessControl: {
-        masterUserName: 'admin',
-      },
-    });
+        const documentResource = `${this.searchDomain.domainArn}/content/_doc/*`;
+        const searchResource = `${this.searchDomain.domainArn}/content/_search`;
+        const initializeIndex = `${this.searchDomain.domainArn}/content/*`;
 
-    // Grant permissions to Lambda functions
-    this.searchDomain.addAccessPolicies(
-      new PolicyStatement({
-        effect: Effect.ALLOW,
-        principals: [new ServicePrincipal('lambda.amazonaws.com')],
-        actions: ['es:*'],
-        resources: [`${this.searchDomain.domainArn}/*`],
-      })
-    );
+        const allowPostPut = new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: ['es:ESHttpPost', 'es:ESHttpPut'],
+            resources: [documentResource],
+        });
 
-    // Grant specific permissions to our Lambdas
-    props.finalizeUploadLambda.addToRolePolicy(
-      new PolicyStatement({
-        actions: ['es:ESHttpPost', 'es:ESHttpPut'],
-        resources: [`${this.searchDomain.domainArn}/documents/_doc`],
-      })
-    );
+        const allowGetSearch = new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: ['es:ESHttpGet', 'es:ESHttpPost'],
+            resources: [searchResource],
+        });
 
-    props.searchLambda.addToRolePolicy(
-      new PolicyStatement({
-        actions: ['es:ESHttpGet', 'es:ESHttpPost'],
-        resources: [`${this.searchDomain.domainArn}/documents/_search`],
-      })
-    );
+        const allowDelete = new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: ['es:ESHttpDelete'],
+            resources: [documentResource],
+        });
 
-    // Output the OpenSearch endpoint
-    new CfnOutput(this, 'OpenSearchEndpoint', {
-      value: this.searchDomain.domainEndpoint,
-      exportName: 'OpenSearchEndpoint',
-    });
-  }
+        const allowInitialize = new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: ['es:ESHttpPut', 'es:ESHttpPost', 'es:ESHttpGet'],
+            resources: [initializeIndex],
+        });
+
+        // Grant indexing perms
+        props.finalizeUploadLambda.addToRolePolicy(allowPostPut);
+        props.updateExtractedTextLambda.addToRolePolicy(allowPostPut);
+        props.updateTagsLambda.addToRolePolicy(allowPostPut);
+        props.updateSummaryLambda.addToRolePolicy(allowPostPut);
+        props.updateQuestionLambda.addToRolePolicy(allowPostPut);
+
+        // Grant search perms
+        props.searchLambda.addToRolePolicy(allowGetSearch);
+        props.initializeSearchIndexLambda.addToRolePolicy(allowInitialize);
+
+        // Grant delete perms
+        props.deleteExtractedTextLambda.addToRolePolicy(allowDelete);
+        props.deleteSummaryLambda.addToRolePolicy(allowDelete);
+        props.deleteQuestionLambda.addToRolePolicy(allowDelete);
+
+        new CfnOutput(this, 'OpenSearchEndpoint', {
+            value: this.searchDomain.domainEndpoint,
+            exportName: 'OpenSearchEndpoint',
+        });
+
+        new CfnCustomResource(this, 'InitSearchIndex', {
+            serviceToken: props.initializeSearchIndexLambda.functionArn,
+        });
+    }
 }
-
-// TODO:: 
-// - Add more fine-grained access control and security measures for production
-// - Consider using Cognito for authentication
-// - Add Summary and Question indexing
-// - Update ComputeStack lambdaProps to include OpenSearch domain endpoint
-// - Create an initial index mapping
-// - Figure out how to handle document, summary, and question updates and deletions in OpenSearch
