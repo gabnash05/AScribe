@@ -2,27 +2,124 @@
 // - Monitor Costs
 // - Add API Gateway Usage Plans to prevent abuse
 
-// OpenSearch:
+import { Stack, StackProps, CfnOutput } from 'aws-cdk-lib';
+import { Table } from 'aws-cdk-lib/aws-dynamodb';
+import { Function } from 'aws-cdk-lib/aws-lambda';
+import { Bucket } from 'aws-cdk-lib/aws-s3';
+import { UserPool } from 'aws-cdk-lib/aws-cognito';
+import { RestApi } from 'aws-cdk-lib/aws-apigateway';
+import { Construct } from 'constructs';
+import * as sns from 'aws-cdk-lib/aws-sns';
+import * as subscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
+import * as cw from 'aws-cdk-lib/aws-cloudwatch';
+import { IDomain } from 'aws-cdk-lib/aws-opensearchservice';
+import * as actions from 'aws-cdk-lib/aws-cloudwatch-actions';
 
-    // Cluster status (green/yellow/red)
+interface MonitoringStackProps extends StackProps {
+    documentsTable: Table,
+    documentBucket: Bucket,
+    extractedTextsTable: Table,
+    summariesTable: Table,
+    questionsTable: Table,
+    openSearchEndpoint: IDomain;
+    lambdas: Function[];
+    apiGateway: RestApi;
+    userPool: UserPool;
+    envName: string;
+}
 
-    // JVM memory pressure
+export class MonitoringStack extends Stack {
+    constructor(scope: Construct, id: string, props: MonitoringStackProps) {
+        super(scope, id, props);
 
-    // Search latency percentiles
+        const { openSearchEndpoint, lambdas } = props;
+        
+        // Notification Topic for Alarms
+        const alarmTopic = new sns.Topic(this, 'AlarmTopic', {
+            displayName: `AScribe Alarms`,
+        });
+        alarmTopic.addSubscription(new subscriptions.EmailSubscription('nasayaokim@gmail.com'));
 
-    // Indexing rate/errors
+        // 
+        // OpenSearch Monitoring
+        //
 
-// Lambda:
+        // Cluster Health
+        new cw.Alarm(this, 'OpenSearchClusterStatus', {
+            metric: openSearchEndpoint.metricClusterStatusRed(),
+            threshold: 1,
+            evaluationPeriods: 1,
+            treatMissingData: cw.TreatMissingData.BREACHING,
+            alarmDescription: 'Ascribe OpenSearch Cluster Status',
+            alarmName: 'Ascribe-OS-ClusterStatus',
+            comparisonOperator: cw.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+            actionsEnabled: true,
+        }).addAlarmAction(new actions.SnsAction(alarmTopic));
+        
+        // JVM Memory Pressure
+        new cw.Alarm(this, 'OpenSearchJVMHeapPressure', {
+            metric: openSearchEndpoint.metricJVMMemoryPressure(),
+            threshold: 80,
+            evaluationPeriods: 3,
+            datapointsToAlarm: 2,
+            treatMissingData: cw.TreatMissingData.BREACHING,
+            alarmDescription: 'OpenSearch JVM memory pressure > 80%',
+            alarmName: 'Ascribe-OS-JVMHeapPressure',
+            comparisonOperator: cw.ComparisonOperator.GREATER_THAN_THRESHOLD,
+            actionsEnabled: true,
+        }).addAlarmAction(new actions.SnsAction(alarmTopic));
 
-    // Invocation counts
+        // CPU Utilization
+        new cw.Alarm(this, 'OS-CPUUtilization', {
+            metric: openSearchEndpoint.metricCPUUtilization(),
+            threshold: 75,
+            evaluationPeriods: 5,
+            datapointsToAlarm: 3,
+            comparisonOperator: cw.ComparisonOperator.GREATER_THAN_THRESHOLD,
+            alarmDescription: 'OpenSearch CPU > 75% for 15 minutes',
+            alarmName: 'Ascribe-OS-CPUUtilization',
+            actionsEnabled: true
+        }).addAlarmAction(new actions.SnsAction(alarmTopic));
 
-    // Error rates
+        //
+        // Lambda Monitoring
+        //
 
-    // Duration percentiles
+        // Error Alarm
+        lambdas.forEach(lambda => {
+            new cw.Alarm(this, `Lambda-${lambda.node.id}-Errors`, {
+                metric: lambda.metricErrors(),
+                threshold: 1,
+                evaluationPeriods: 5,
+                datapointsToAlarm: 3,
+                treatMissingData: cw.TreatMissingData.NOT_BREACHING,
+                alarmDescription: `${lambda.functionName} has errors`,
+                alarmName: `Ascribe-Lambda-${lambda.functionName}-Errors`,
+                actionsEnabled: true
+            }).addAlarmAction(new actions.SnsAction(alarmTopic));
+            
+            // Duration Alarm
+            new cw.Alarm(this, `Lambda-${lambda.node.id}-Duration`, {
+                metric: lambda.metricDuration(),
+                threshold: 30000,
+                evaluationPeriods: 3,
+                datapointsToAlarm: 2,
+                comparisonOperator: cw.ComparisonOperator.GREATER_THAN_THRESHOLD,
+                alarmDescription: `${lambda.functionName} duration > 5s`,
+                alarmName: `Ascribe-Lambda-${lambda.functionName}-Timeout-Errors`,
+                actionsEnabled: true
+            }).addAlarmAction(new actions.SnsAction(alarmTopic));
+        });
 
-    // Throttles
+        // DynamoDB Monitoring
+        // API Gateway Monitoring
+        // S3 Monitoring
+        // Cognito Monitoring
+        // Dashboards
+        // Custom Metrics
+    }
+}
 
-    // Concurrent executions
 
 // DynamoDB:
 
