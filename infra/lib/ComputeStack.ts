@@ -12,6 +12,7 @@ interface ComputeStackProps extends StackProps {
     extractedTextsTable: Table,
     summariesTable: Table,
     questionsTable: Table,
+    openSearchEndpoint: string;
 }
 
 export class ComputeStack extends Stack {
@@ -44,6 +45,7 @@ export class ComputeStack extends Stack {
 
     // Search Handlers
     public readonly searchDocumentsLambda: NodejsFunction;
+    public readonly initializeSearchIndexLambda: NodejsFunction;
 
     constructor(scope: Construct, id: string, props: ComputeStackProps) {
         super(scope, id, props);
@@ -53,50 +55,66 @@ export class ComputeStack extends Stack {
             documentsTable,
             extractedTextsTable,
             summariesTable,
-            questionsTable
+            questionsTable,
+            openSearchEndpoint
         } = props;
 
+        // Base environment variables common to all Lambdas
+        const baseEnv = {
+            DOCUMENT_BUCKET: documentBucket.bucketName,
+            DOCUMENTS_TABLE: documentsTable.tableName,
+            EXTRACTED_TEXTS_TABLE: extractedTextsTable.tableName,
+            SUMMARIES_TABLE: summariesTable.tableName,
+            QUESTIONS_TABLE: questionsTable.tableName,
+        };
+
+        // For Lambdas that interact with OpenSearch, add the endpoint to environment variables
         const lambdaProps = {
             runtime: Runtime.NODEJS_20_X,
             timeout: Duration.seconds(30),
             environment: {
-                DOCUMENT_BUCKET: documentBucket.bucketName,
-                DOCUMENTS_TABLE: documentsTable.tableName,
-                EXTRACTED_TEXTS_TABLE: extractedTextsTable.tableName,
-                SUMMARIES_TABLE: summariesTable.tableName,
-                QUESTIONS_TABLE: questionsTable.tableName,
+                ...baseEnv,
+                OPENSEARCH_ENDPOINT: openSearchEndpoint,
             }
         };
 
+        // For Lambdas that don't use OpenSearch, omit the endpoint
+        const lambdaPropsNoSearch = {
+            runtime: Runtime.NODEJS_20_X,
+            timeout: Duration.seconds(30),
+            environment: baseEnv
+        };
+
         // Document Lambda functions
-        this.uploadLambda = this.createLambda('upload', 'Documents', lambdaProps);
+        this.uploadLambda = this.createLambda('upload', 'Documents', lambdaPropsNoSearch);
         this.finalizeUploadLambda = this.createLambda('finalizeUpload', 'Documents', lambdaProps);
-        this.getDocumentLambda = this.createLambda('getDocument', 'Documents', lambdaProps);
-        this.getDocumentsLambda = this.createLambda('getDocuments', 'Documents', lambdaProps);
-        this.updateDocumentLambda = this.createLambda('updateDocument', 'Documents', lambdaProps);
-        this.deleteDocumentLambda = this.createLambda('deleteDocument', 'Documents', lambdaProps);
+        this.getDocumentLambda = this.createLambda('getDocument', 'Documents', lambdaPropsNoSearch);
+        this.getDocumentsLambda = this.createLambda('getDocuments', 'Documents', lambdaPropsNoSearch);
+        this.updateDocumentLambda = this.createLambda('updateDocument', 'Documents', lambdaPropsNoSearch);
+        this.deleteDocumentLambda = this.createLambda('deleteDocument', 'Documents', lambdaPropsNoSearch);
         this.updateTagsLambda = this.createLambda('updateTags', 'Documents', lambdaProps);
 
         // Extracted Text Lambda functions
-        this.getExtractedTextLambda = this.createLambda('getExtractedText', 'ExtractedText', lambdaProps);
+        this.getExtractedTextLambda = this.createLambda('getExtractedText', 'ExtractedText', lambdaPropsNoSearch);
         this.updateExtractedTextLambda = this.createLambda('updateExtractedText', 'ExtractedText', lambdaProps);
         this.deleteExtractedTextLambda = this.createLambda('deleteExtractedText', 'ExtractedText', lambdaProps);
 
         // Summary Lambda functions
         this.createSummaryLambda = this.createLambda('createSummary', 'Summaries', lambdaProps);
-        this.getSummaryLambda = this.createLambda('getSummary', 'Summaries', lambdaProps);
+        this.getSummaryLambda = this.createLambda('getSummary', 'Summaries', lambdaPropsNoSearch);
         this.updateSummaryLambda = this.createLambda('updateSummary', 'Summaries', lambdaProps);
         this.deleteSummaryLambda = this.createLambda('deleteSummary', 'Summaries', lambdaProps);
 
         // Questions Lambda functions
         this.createQuestionsLambda = this.createLambda('createQuestions', 'Questions', lambdaProps);
-        this.getQuestionsLambda = this.createLambda('getQuestions', 'Questions', lambdaProps);
-        this.getQuestionLambda = this.createLambda('getQuestion', 'Questions', lambdaProps);
+        this.getQuestionsLambda = this.createLambda('getQuestions', 'Questions', lambdaPropsNoSearch);
+        this.getQuestionLambda = this.createLambda('getQuestion', 'Questions', lambdaPropsNoSearch);
         this.updateQuestionLambda = this.createLambda('updateQuestion', 'Questions', lambdaProps);
         this.deleteQuestionLambda = this.createLambda('deleteQuestion', 'Questions', lambdaProps);
 
-        // Search Lambda function
+        // Search Lambda function (must have OpenSearch access)
         this.searchDocumentsLambda = this.createLambda('searchDocuments', 'Search', lambdaProps);
+        this.initializeSearchIndexLambda = this.createLambda('initializeSearchIndex', 'Search', lambdaProps);
 
         // S3 Permissions
         documentBucket.grantReadWrite(this.uploadLambda);
@@ -106,15 +124,13 @@ export class ComputeStack extends Stack {
         documentBucket.grantWrite(this.updateDocumentLambda);
         documentBucket.grantWrite(this.deleteDocumentLambda);
 
-        // These Lambdas do not modify files in S3, only read references
+        // Lambdas that only read S3 references
         documentBucket.grantRead(this.getExtractedTextLambda);
         documentBucket.grantRead(this.getSummaryLambda);
         documentBucket.grantRead(this.getQuestionsLambda);
         documentBucket.grantRead(this.searchDocumentsLambda);
 
-        // ----------------------------
         // DynamoDB Permissions
-        // ----------------------------
 
         // Documents Table
         documentsTable.grantReadWriteData(this.uploadLambda);
@@ -125,7 +141,7 @@ export class ComputeStack extends Stack {
         documentsTable.grantReadWriteData(this.deleteDocumentLambda);
         documentsTable.grantReadWriteData(this.updateTagsLambda);
 
-        // If summaries and questions require metadata from the documents table:
+        // Summaries and Questions may need document metadata read
         documentsTable.grantReadData(this.createSummaryLambda);
         documentsTable.grantReadData(this.createQuestionsLambda);
 
@@ -135,7 +151,7 @@ export class ComputeStack extends Stack {
         extractedTextsTable.grantReadWriteData(this.updateExtractedTextLambda);
         extractedTextsTable.grantReadWriteData(this.deleteExtractedTextLambda);
 
-        // Needed for generating summaries/questions from extracted text
+        // Needed for summary/question generation
         extractedTextsTable.grantReadData(this.createSummaryLambda);
         extractedTextsTable.grantReadData(this.createQuestionsLambda);
 
@@ -151,7 +167,6 @@ export class ComputeStack extends Stack {
         questionsTable.grantReadData(this.getQuestionLambda);
         questionsTable.grantReadWriteData(this.updateQuestionLambda);
         questionsTable.grantReadWriteData(this.deleteQuestionLambda);
-
     }
 
     private createLambda(name: string, handlerType: string, commonProps: any): NodejsFunction {
