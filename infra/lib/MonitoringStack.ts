@@ -1,12 +1,5 @@
-// Will contain CloudFront distribution and other resources in the future
-// - Monitor Costs
-// - Add API Gateway Usage Plans to prevent abuse
-
-import { Stack, StackProps, CfnOutput } from 'aws-cdk-lib';
-import { Table } from 'aws-cdk-lib/aws-dynamodb';
+import { Stack, StackProps } from 'aws-cdk-lib';
 import { Function } from 'aws-cdk-lib/aws-lambda';
-import { Bucket } from 'aws-cdk-lib/aws-s3';
-import { UserPool } from 'aws-cdk-lib/aws-cognito';
 import { RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { Construct } from 'constructs';
 import * as sns from 'aws-cdk-lib/aws-sns';
