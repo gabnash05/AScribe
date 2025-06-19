@@ -4,6 +4,7 @@ import { Table } from "aws-cdk-lib/aws-dynamodb";
 import { Construct } from 'constructs';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
+import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import * as path from 'path';
 
 interface ComputeStackProps extends StackProps {
@@ -13,6 +14,7 @@ interface ComputeStackProps extends StackProps {
     summariesTable: Table,
     questionsTable: Table,
     openSearchEndpoint: string;
+    bedrockModelID: string;
 }
 
 export class ComputeStack extends Stack {
@@ -56,7 +58,8 @@ export class ComputeStack extends Stack {
             extractedTextsTable,
             summariesTable,
             questionsTable,
-            openSearchEndpoint
+            openSearchEndpoint,
+            bedrockModelID
         } = props;
 
         // Base environment variables common to all Lambdas
@@ -68,8 +71,8 @@ export class ComputeStack extends Stack {
             QUESTIONS_TABLE: questionsTable.tableName,
         };
 
-        // For Lambdas that interact with OpenSearch, add the endpoint to environment variables
-        const lambdaProps = {
+        // For Lambdas that interact with OpenSearch
+        const lambdaPropsWithSearch = {
             runtime: Runtime.NODEJS_20_X,
             timeout: Duration.seconds(30),
             environment: {
@@ -78,43 +81,54 @@ export class ComputeStack extends Stack {
             }
         };
 
-        // For Lambdas that don't use OpenSearch, omit the endpoint
-        const lambdaPropsNoSearch = {
+        // For Lambdas that interact with Bedrock and OpenSearch
+        const lambdaPropsWithBedrockAndSearch = {
             runtime: Runtime.NODEJS_20_X,
             timeout: Duration.seconds(30),
+            environment: {
+                ...baseEnv,
+                OPENSEARCH_ENDPOINT: openSearchEndpoint,
+                BEDROCK_MODEL_ID: bedrockModelID,
+            }
+        };
+
+        // For Lambdas that don't interact with OpenSearch or Bedrock
+        const lambdaProps = {
+            runtime: Runtime.NODEJS_20_X,
+            timeout: Duration.seconds(10),
             environment: baseEnv
         };
 
         // Document Lambda functions
-        this.uploadLambda = this.createLambda('upload', 'Documents', lambdaPropsNoSearch);
-        this.finalizeUploadLambda = this.createLambda('finalizeUpload', 'Documents', lambdaProps);
-        this.getDocumentLambda = this.createLambda('getDocument', 'Documents', lambdaPropsNoSearch);
-        this.getDocumentsLambda = this.createLambda('getDocuments', 'Documents', lambdaPropsNoSearch);
-        this.updateDocumentLambda = this.createLambda('updateDocument', 'Documents', lambdaPropsNoSearch);
-        this.deleteDocumentLambda = this.createLambda('deleteDocument', 'Documents', lambdaPropsNoSearch);
-        this.updateTagsLambda = this.createLambda('updateTags', 'Documents', lambdaProps);
+        this.uploadLambda = this.createLambda('upload', 'Documents', lambdaProps);
+        this.finalizeUploadLambda = this.createLambda('finalizeUpload', 'Documents', lambdaPropsWithBedrockAndSearch);
+        this.getDocumentLambda = this.createLambda('getDocument', 'Documents', lambdaProps);
+        this.getDocumentsLambda = this.createLambda('getDocuments', 'Documents', lambdaProps);
+        this.updateDocumentLambda = this.createLambda('updateDocument', 'Documents', lambdaProps);
+        this.deleteDocumentLambda = this.createLambda('deleteDocument', 'Documents', lambdaProps);
+        this.updateTagsLambda = this.createLambda('updateTags', 'Documents', lambdaPropsWithSearch);
 
         // Extracted Text Lambda functions
-        this.getExtractedTextLambda = this.createLambda('getExtractedText', 'ExtractedText', lambdaPropsNoSearch);
-        this.updateExtractedTextLambda = this.createLambda('updateExtractedText', 'ExtractedText', lambdaProps);
-        this.deleteExtractedTextLambda = this.createLambda('deleteExtractedText', 'ExtractedText', lambdaProps);
+        this.getExtractedTextLambda = this.createLambda('getExtractedText', 'ExtractedText', lambdaProps);
+        this.updateExtractedTextLambda = this.createLambda('updateExtractedText', 'ExtractedText', lambdaPropsWithSearch);
+        this.deleteExtractedTextLambda = this.createLambda('deleteExtractedText', 'ExtractedText', lambdaPropsWithSearch);
 
         // Summary Lambda functions
-        this.createSummaryLambda = this.createLambda('createSummary', 'Summaries', lambdaProps);
-        this.getSummaryLambda = this.createLambda('getSummary', 'Summaries', lambdaPropsNoSearch);
-        this.updateSummaryLambda = this.createLambda('updateSummary', 'Summaries', lambdaProps);
-        this.deleteSummaryLambda = this.createLambda('deleteSummary', 'Summaries', lambdaProps);
+        this.createSummaryLambda = this.createLambda('createSummary', 'Summaries', lambdaPropsWithBedrockAndSearch);
+        this.getSummaryLambda = this.createLambda('getSummary', 'Summaries', lambdaProps);
+        this.updateSummaryLambda = this.createLambda('updateSummary', 'Summaries', lambdaPropsWithSearch);
+        this.deleteSummaryLambda = this.createLambda('deleteSummary', 'Summaries', lambdaPropsWithSearch);
 
         // Questions Lambda functions
-        this.createQuestionsLambda = this.createLambda('createQuestions', 'Questions', lambdaProps);
-        this.getQuestionsLambda = this.createLambda('getQuestions', 'Questions', lambdaPropsNoSearch);
-        this.getQuestionLambda = this.createLambda('getQuestion', 'Questions', lambdaPropsNoSearch);
-        this.updateQuestionLambda = this.createLambda('updateQuestion', 'Questions', lambdaProps);
-        this.deleteQuestionLambda = this.createLambda('deleteQuestion', 'Questions', lambdaProps);
+        this.createQuestionsLambda = this.createLambda('createQuestions', 'Questions', lambdaPropsWithBedrockAndSearch);
+        this.getQuestionsLambda = this.createLambda('getQuestions', 'Questions', lambdaProps);
+        this.getQuestionLambda = this.createLambda('getQuestion', 'Questions', lambdaProps);
+        this.updateQuestionLambda = this.createLambda('updateQuestion', 'Questions', lambdaPropsWithSearch);
+        this.deleteQuestionLambda = this.createLambda('deleteQuestion', 'Questions', lambdaPropsWithSearch);
 
         // Search Lambda function (must have OpenSearch access)
-        this.searchDocumentsLambda = this.createLambda('searchDocuments', 'Search', lambdaProps);
-        this.initializeSearchIndexLambda = this.createLambda('initializeSearchIndex', 'Search', lambdaProps);
+        this.searchDocumentsLambda = this.createLambda('searchDocuments', 'Search', lambdaPropsWithSearch);
+        this.initializeSearchIndexLambda = this.createLambda('initializeSearchIndex', 'Search', lambdaPropsWithSearch);
 
         // S3 Permissions
         documentBucket.grantReadWrite(this.uploadLambda);
@@ -167,6 +181,16 @@ export class ComputeStack extends Stack {
         questionsTable.grantReadData(this.getQuestionLambda);
         questionsTable.grantReadWriteData(this.updateQuestionLambda);
         questionsTable.grantReadWriteData(this.deleteQuestionLambda);
+
+        // Bedrock Permissions
+        const bedrockPolicy = new PolicyStatement({
+            actions: ['bedrock:InvokeModel'],
+            resources: ['*'], // Restrict to model ARN if needed
+        });
+
+        this.uploadLambda.addToRolePolicy(bedrockPolicy);
+        this.createSummaryLambda.addToRolePolicy(bedrockPolicy);
+        this.createQuestionsLambda.addToRolePolicy(bedrockPolicy);
     }
 
     private createLambda(name: string, handlerType: string, commonProps: any): NodejsFunction {
