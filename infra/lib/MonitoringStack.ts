@@ -12,171 +12,98 @@ import { Construct } from 'constructs';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as subscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
 import * as cw from 'aws-cdk-lib/aws-cloudwatch';
-import { IDomain } from 'aws-cdk-lib/aws-opensearchservice';
+import { Duration } from 'aws-cdk-lib';
 import * as actions from 'aws-cdk-lib/aws-cloudwatch-actions';
 
 interface MonitoringStackProps extends StackProps {
-    documentsTable: Table,
-    documentBucket: Bucket,
-    extractedTextsTable: Table,
-    summariesTable: Table,
-    questionsTable: Table,
-    openSearchEndpoint: IDomain;
-    lambdas: Function[];
+    criticalLambdas: Function[];
+    regularLambdas: Function[];
     apiGateway: RestApi;
-    userPool: UserPool;
-    envName: string;
 }
 
 export class MonitoringStack extends Stack {
     constructor(scope: Construct, id: string, props: MonitoringStackProps) {
         super(scope, id, props);
 
-        const { openSearchEndpoint, lambdas } = props;
-        
+        const { criticalLambdas, regularLambdas, apiGateway } = props;
+
         // Notification Topic for Alarms
         const alarmTopic = new sns.Topic(this, 'AlarmTopic', {
             displayName: `AScribe Alarms`,
         });
         alarmTopic.addSubscription(new subscriptions.EmailSubscription('nasayaokim@gmail.com'));
 
-        // 
-        // OpenSearch Monitoring
-        //
-
-        // Cluster Health
-        new cw.Alarm(this, 'OpenSearchClusterStatus', {
-            metric: openSearchEndpoint.metricClusterStatusRed(),
-            threshold: 1,
-            evaluationPeriods: 1,
-            treatMissingData: cw.TreatMissingData.BREACHING,
-            alarmDescription: 'Ascribe OpenSearch Cluster Status',
-            alarmName: 'Ascribe-OS-ClusterStatus',
-            comparisonOperator: cw.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-            actionsEnabled: true,
-        }).addAlarmAction(new actions.SnsAction(alarmTopic));
-        
-        // JVM Memory Pressure
-        new cw.Alarm(this, 'OpenSearchJVMHeapPressure', {
-            metric: openSearchEndpoint.metricJVMMemoryPressure(),
-            threshold: 80,
-            evaluationPeriods: 3,
-            datapointsToAlarm: 2,
-            treatMissingData: cw.TreatMissingData.BREACHING,
-            alarmDescription: 'OpenSearch JVM memory pressure > 80%',
-            alarmName: 'Ascribe-OS-JVMHeapPressure',
-            comparisonOperator: cw.ComparisonOperator.GREATER_THAN_THRESHOLD,
-            actionsEnabled: true,
-        }).addAlarmAction(new actions.SnsAction(alarmTopic));
-
-        // CPU Utilization
-        new cw.Alarm(this, 'OS-CPUUtilization', {
-            metric: openSearchEndpoint.metricCPUUtilization(),
-            threshold: 75,
-            evaluationPeriods: 5,
-            datapointsToAlarm: 3,
-            comparisonOperator: cw.ComparisonOperator.GREATER_THAN_THRESHOLD,
-            alarmDescription: 'OpenSearch CPU > 75% for 15 minutes',
-            alarmName: 'Ascribe-OS-CPUUtilization',
-            actionsEnabled: true
-        }).addAlarmAction(new actions.SnsAction(alarmTopic));
-
-        //
-        // Lambda Monitoring
-        //
-
-        // Error Alarm
-        lambdas.forEach(lambda => {
+        // Critical Lambdas Alarm (Max 5 Alarms)
+        criticalLambdas.forEach(lambda => {
             new cw.Alarm(this, `Lambda-${lambda.node.id}-Errors`, {
-                metric: lambda.metricErrors(),
+                metric: lambda.metricErrors({
+                    period: Duration.seconds(60)
+                }),
                 threshold: 1,
-                evaluationPeriods: 5,
-                datapointsToAlarm: 3,
-                treatMissingData: cw.TreatMissingData.NOT_BREACHING,
+                evaluationPeriods: 1,
+                treatMissingData: cw.TreatMissingData.IGNORE,
                 alarmDescription: `${lambda.functionName} has errors`,
                 alarmName: `Ascribe-Lambda-${lambda.functionName}-Errors`,
-                actionsEnabled: true
-            }).addAlarmAction(new actions.SnsAction(alarmTopic));
-            
-            // Duration Alarm
-            new cw.Alarm(this, `Lambda-${lambda.node.id}-Duration`, {
-                metric: lambda.metricDuration(),
-                threshold: 30000,
-                evaluationPeriods: 3,
-                datapointsToAlarm: 2,
-                comparisonOperator: cw.ComparisonOperator.GREATER_THAN_THRESHOLD,
-                alarmDescription: `${lambda.functionName} duration > 5s`,
-                alarmName: `Ascribe-Lambda-${lambda.functionName}-Timeout-Errors`,
-                actionsEnabled: true
+                comparisonOperator: cw.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
             }).addAlarmAction(new actions.SnsAction(alarmTopic));
         });
 
-        // DynamoDB Monitoring
-        // API Gateway Monitoring
-        // S3 Monitoring
-        // Cognito Monitoring
-        // Dashboards
-        // Custom Metrics
+        // Regular Lambdas Alarm (1 Alarm)
+        const regularLambdasErrorMetrics = new cw.MathExpression({
+            expression: `SUM(METRICS())`,
+            usingMetrics: Object.fromEntries(
+                regularLambdas.map(lambda => [
+                    lambda.functionName,
+                    lambda.metricErrors({ period: Duration.minutes(5) })
+                ])
+            ),
+            label: 'TotalNonCriticalLambdaErrors'
+        });
+
+        // Alert if 5+ errors across all non-critical Lambdas
+        new cw.Alarm(this, 'NonCriticalLambdaErrors', {
+            metric: regularLambdasErrorMetrics,
+            threshold: 5,
+            evaluationPeriods: 1,
+            alarmDescription: 'Aggregate error count across non-critical Lambdas exceeded threshold.',
+            alarmName: 'AScribe-NonCriticalLambdas-Errors',
+            treatMissingData: cw.TreatMissingData.IGNORE,
+            comparisonOperator: cw.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+        }).addAlarmAction(new actions.SnsAction(alarmTopic));
+
+        // API Gateway 5XX errors (1 alarm)
+        new cw.Alarm(this, 'Api5XXErrors', {
+            metric: apiGateway.metricServerError({ period: Duration.minutes(5) }),
+            threshold: 1,
+            evaluationPeriods: 1,
+            treatMissingData: cw.TreatMissingData.NOT_BREACHING,
+            alarmDescription: 'API Gateway is returning 5XX errors.',
+            alarmName: 'AScribe-ApiGateway-5XX',
+            comparisonOperator: cw.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+        }).addAlarmAction(new actions.SnsAction(alarmTopic));
+
+        // Cost Monitoring
+        new cw.Alarm(this, 'MonthlyCostAlert', {
+            metric: new cw.Metric({
+                namespace: 'AWS/Billing',
+                metricName: 'EstimatedCharges',
+                dimensionsMap: {
+                    Currency: 'USD',
+                },
+                statistic: 'Maximum',
+                period: Duration.hours(24)
+            }),
+            threshold: 1,
+            evaluationPeriods: 1,
+            alarmDescription: 'Estimated monthly AWS charges exceeded $10.',
+            alarmName: 'AScribe-Billing-Threshold',
+            comparisonOperator: cw.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+            treatMissingData: cw.TreatMissingData.NOT_BREACHING,
+        }).addAlarmAction(new actions.SnsAction(alarmTopic));
+
+        // Log all Lambda errors to CloudWatch Logs
+        criticalLambdas.concat(regularLambdas).forEach(lambda => {
+            lambda.addEnvironment('LOG_ERRORS', 'true');
+        });
     }
 }
-
-
-// DynamoDB:
-
-    // Read/write capacity utilization
-
-    // Throttled requests
-
-    // Latency metrics
-
-    // Conditional check failures
-
-// API Gateway:
-
-    // 4xx/5xx error rates
-
-    // Cache hit/miss
-
-    // Integration latency
-
-    // Request counts by method
-
-// S3:
-
-    // Bucket size metrics
-
-    // Number of objects
-
-    // Unauthorized access attempts
-
-    // Data transfer volume
-
-// Custom Business Metrics:
-
-    // Documents processed/hour
-
-    // Search terms frequency
-
-    // User activity levels
-
-    // Text extraction accuracy rates
-
-// Alerting:
-
-    // Email/SMS notifications
-
-    // Slack integration
-
-    // PagerDuty for critical alerts
-
-    // Escalation policies
-
-// Dashboards:
-
-    // System health overview
-
-    // User activity trends
-
-    // Cost monitoring
-
-    // Performance benchmarks
