@@ -75,6 +75,36 @@ export class MonitoringStack extends Stack {
             comparisonOperator: cw.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
         }).addAlarmAction(new actions.SnsAction(alarmTopic));
 
+        // AWS Bedrock (1 alarm)
+        const totalTokens = new cw.MathExpression({
+            expression: 'input + output',
+            usingMetrics: {
+                input: new cw.Metric({
+                    namespace: 'AWS/Bedrock',
+                    metricName: 'InputTokenCount',
+                    statistic: 'Sum',
+                    period: Duration.hours(1),
+                }),
+                output: new cw.Metric({
+                    namespace: 'AWS/Bedrock',
+                    metricName: 'OutputTokenCount',
+                    statistic: 'Sum',
+                    period: Duration.hours(1),
+                }),
+            },
+            label: 'TotalTokensUsed',
+        });
+
+        new cw.Alarm(this, 'BedrockTokenUsageAlarm', {
+            metric: totalTokens,
+            threshold: 500_000, // Example: 500K tokens/hour
+            evaluationPeriods: 1,
+            comparisonOperator: cw.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+            treatMissingData: cw.TreatMissingData.NOT_BREACHING,
+            alarmName: 'AScribe-Bedrock-TokenUsage',
+            alarmDescription: 'Total Bedrock token usage exceeded hourly threshold.',
+        }).addAlarmAction(new actions.SnsAction(alarmTopic));
+
         // Cost Monitoring
         new cw.Alarm(this, 'MonthlyCostAlert', {
             metric: new cw.Metric({
