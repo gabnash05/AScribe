@@ -1,5 +1,4 @@
 import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
-import { UserPool } from 'aws-cdk-lib/aws-cognito';
 import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 
@@ -14,7 +13,7 @@ export class StorageStack extends Stack {
         super(scope, id, props);
         
         this.documentBucket = new Bucket(this, 'DocumentBucket', {
-            bucketName: 'ascribe-document-bucket',
+            bucketName: `ascribe-document-bucket-${props.stage}`,
             removalPolicy: props.stage === 'dev' ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN, // TODO: Change to RETAIN in production
             encryption: BucketEncryption.S3_MANAGED,
             blockPublicAccess: BlockPublicAccess.BLOCK_ALL,

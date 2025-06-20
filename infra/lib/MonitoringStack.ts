@@ -26,7 +26,12 @@ export class MonitoringStack extends Stack {
         const alarmTopic = new sns.Topic(this, 'AlarmTopic', {
             displayName: `AScribe Alarms`,
         });
-        alarmTopic.addSubscription(new subscriptions.EmailSubscription('nasayaokim@gmail.com')); // TODO: Change email
+
+        const notificationEmail = props.notificationEmail!;
+
+        if (notificationEmail) {
+            alarmTopic.addSubscription(new subscriptions.EmailSubscription(notificationEmail));
+        }
 
         // Critical Lambdas Alarm (Max 5 Alarms)
         criticalLambdas.forEach(lambda => {
@@ -118,10 +123,9 @@ export class MonitoringStack extends Stack {
                 statistic: 'Maximum',
                 period: Duration.hours(24)
             }),
-            threshold: 1,
+            threshold: 10,
             evaluationPeriods: 1,
-            alarmDescription: 'Estimated monthly AWS charges exceeded $10.',
-            alarmName: 'AScribe-Billing-Threshold',
+            alarmDescription: 'Estimated monthly AWS charges exceeded $10.',            alarmName: 'AScribe-Billing-Threshold',
             comparisonOperator: cw.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
             treatMissingData: cw.TreatMissingData.NOT_BREACHING,
         }).addAlarmAction(new actions.SnsAction(alarmTopic));
