@@ -2,20 +2,24 @@ import { Stack, StackProps, RemovalPolicy } from 'aws-cdk-lib';
 import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 
+import { AscribeAppProps } from '../types/ascribe-app-types';
+
+interface DatabaseStackProps extends AscribeAppProps {}
+
 export class DatabaseStack extends Stack {
     public readonly documentsTable: Table;
     public readonly extractedTextsTable: Table;
     public readonly summariesTable: Table;
     public readonly questionsTable: Table;
 
-    constructor(scope: Construct, id: string, props?: StackProps) {
+    constructor(scope: Construct, id: string, props: DatabaseStackProps) {
         super(scope, id, props);
 
         this.documentsTable = new Table(this, 'DocumentsTable', {
-            tableName: 'AScribeDocuments ',
+            tableName: 'AScribeDocuments',
             partitionKey: { name: 'userId', type: AttributeType.STRING },
             sortKey: { name: 'documentId', type: AttributeType.STRING },
-            removalPolicy: RemovalPolicy.DESTROY, // TODO: Change to RETAIN in production
+            removalPolicy: props.stage === 'dev' ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN, // TODO: Change to RETAIN in production
             billingMode: BillingMode.PAY_PER_REQUEST,
         });
 
@@ -33,7 +37,7 @@ export class DatabaseStack extends Stack {
             tableName: 'AScribeExtractedTexts',
             partitionKey: { name: 'extractedTextId', type: AttributeType.STRING },
             sortKey: { name: 'documentId', type: AttributeType.STRING },
-            removalPolicy: RemovalPolicy.DESTROY, // TODO: Change to RETAIN in production
+            removalPolicy: props.stage === 'dev' ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN, // TODO: Change to RETAIN in production
             billingMode: BillingMode.PAY_PER_REQUEST,
         });
 
@@ -44,15 +48,14 @@ export class DatabaseStack extends Stack {
         // - verified: boolean
         // - textFileKey: string (S3 key of saved .md/.txt)
         // - summaryId: string (optional)
-        // - flashCardsId: string[] (optional)
-        // - quizId: string[] (optional)
+        // - questionsId: string[] (optional)
         // - tokens: number (optional, for token count)
 
         this.summariesTable = new Table (this, 'SummariesTable', {
             tableName: 'AScribeSummaries',
             partitionKey: { name: 'documentId', type: AttributeType.STRING },
             sortKey: { name: 'summaryId', type: AttributeType.STRING },
-            removalPolicy: RemovalPolicy.DESTROY, // TODO: Change to RETAIN in production
+            removalPolicy: props.stage === 'dev' ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN, // TODO: Change to RETAIN in production
             billingMode: BillingMode.PAY_PER_REQUEST,
         });
 
@@ -66,7 +69,7 @@ export class DatabaseStack extends Stack {
             tableName: 'AScribeQuestions',
             partitionKey: { name: 'documentId', type: AttributeType.STRING },
             sortKey: { name: 'questionsId', type: AttributeType.STRING },
-            removalPolicy: RemovalPolicy.DESTROY, // TODO: Change to RETAIN in production
+            removalPolicy: props.stage === 'dev' ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN, // TODO: Change to RETAIN in production
             billingMode: BillingMode.PAY_PER_REQUEST,
         });
 

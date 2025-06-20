@@ -5,7 +5,9 @@ import { Role, ServicePrincipal, PolicyStatement, Effect } from 'aws-cdk-lib/aws
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { EbsDeviceVolumeType } from 'aws-cdk-lib/aws-ec2';
 
-interface SearchStackProps extends StackProps {
+import { AscribeAppProps } from '../types/ascribe-app-types';
+
+export interface SearchLambdas {
     finalizeUploadLambda: IFunction;
     searchLambda: IFunction;
     updateExtractedTextLambda: IFunction;
@@ -18,8 +20,13 @@ interface SearchStackProps extends StackProps {
     initializeSearchIndexLambda: IFunction;
 }
 
+interface SearchStackProps extends AscribeAppProps {
+    searchLambdas?: SearchLambdas;
+}
+
 export class SearchStack extends Stack {
     public readonly searchDomain: Domain;
+    private searchLambdas?: SearchLambdas;
 
     constructor(scope: Construct, id: string, props: SearchStackProps) {
         super(scope, id, props);
@@ -30,16 +37,16 @@ export class SearchStack extends Stack {
             domainName: 'ascribe-search',
             capacity: {
                 dataNodes: 1,
-                dataNodeInstanceType: 't3.small.search', // Small instance for development
+                dataNodeInstanceType: 't3.small.search', // TODO: Small instance for development
             },
             ebs: {
                 volumeSize: 5,
                 volumeType: EbsDeviceVolumeType.GP2,
             },
             zoneAwareness: {
-                enabled: false, // Enable in production for HA
+                enabled: false, // TODO: Enable in production for HA
             },
-            removalPolicy: RemovalPolicy.DESTROY, // TODO: Change to RETAIN in production
+            removalPolicy: props.stage === 'dev' ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN, // TODO: Change to RETAIN in production
             enforceHttps: true,
             nodeToNodeEncryption: true,
             encryptionAtRest: {
@@ -49,6 +56,20 @@ export class SearchStack extends Stack {
                 masterUserName: 'admin',
             },
         });
+
+        new CfnOutput(this, 'OpenSearchEndpoint', {
+            value: this.searchDomain.domainEndpoint,
+            exportName: 'OpenSearchEndpoint',
+        });
+
+        // Optionally bind lambdas at construction
+        if (props.searchLambdas) {
+            this.bindLambdas(props.searchLambdas);
+        }
+    }
+
+    public bindLambdas(lambdas: SearchLambdas): void {
+        this.searchLambdas = lambdas;
 
         const documentResource = `${this.searchDomain.domainArn}/content/_doc/*`;
         const searchResource = `${this.searchDomain.domainArn}/content/_search`;
@@ -79,28 +100,23 @@ export class SearchStack extends Stack {
         });
 
         // Grant indexing perms
-        props.finalizeUploadLambda.addToRolePolicy(allowPostPut);
-        props.updateExtractedTextLambda.addToRolePolicy(allowPostPut);
-        props.updateTagsLambda.addToRolePolicy(allowPostPut);
-        props.updateSummaryLambda.addToRolePolicy(allowPostPut);
-        props.updateQuestionLambda.addToRolePolicy(allowPostPut);
+        lambdas.finalizeUploadLambda.addToRolePolicy(allowPostPut);
+        lambdas.updateExtractedTextLambda.addToRolePolicy(allowPostPut);
+        lambdas.updateTagsLambda.addToRolePolicy(allowPostPut);
+        lambdas.updateSummaryLambda.addToRolePolicy(allowPostPut);
+        lambdas.updateQuestionLambda.addToRolePolicy(allowPostPut);
 
         // Grant search perms
-        props.searchLambda.addToRolePolicy(allowGetSearch);
-        props.initializeSearchIndexLambda.addToRolePolicy(allowInitialize);
+        lambdas.searchLambda.addToRolePolicy(allowGetSearch);
+        lambdas.initializeSearchIndexLambda.addToRolePolicy(allowInitialize);
 
         // Grant delete perms
-        props.deleteExtractedTextLambda.addToRolePolicy(allowDelete);
-        props.deleteSummaryLambda.addToRolePolicy(allowDelete);
-        props.deleteQuestionLambda.addToRolePolicy(allowDelete);
-
-        new CfnOutput(this, 'OpenSearchEndpoint', {
-            value: this.searchDomain.domainEndpoint,
-            exportName: 'OpenSearchEndpoint',
-        });
+        lambdas.deleteExtractedTextLambda.addToRolePolicy(allowDelete);
+        lambdas.deleteSummaryLambda.addToRolePolicy(allowDelete);
+        lambdas.deleteQuestionLambda.addToRolePolicy(allowDelete);
 
         new CfnCustomResource(this, 'InitSearchIndex', {
-            serviceToken: props.initializeSearchIndexLambda.functionArn,
+            serviceToken: lambdas.initializeSearchIndexLambda.functionArn,
         });
     }
 }

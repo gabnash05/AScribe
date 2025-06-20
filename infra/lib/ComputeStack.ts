@@ -7,7 +7,9 @@ import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import * as path from 'path';
 
-interface ComputeStackProps extends StackProps {
+import { AscribeAppProps } from '../types/ascribe-app-types';
+
+interface ComputeStackProps extends AscribeAppProps {
     documentBucket: Bucket,
     documentsTable: Table,
     extractedTextsTable: Table,
@@ -185,7 +187,10 @@ export class ComputeStack extends Stack {
         // Bedrock Permissions
         const bedrockPolicy = new PolicyStatement({
             actions: ['bedrock:InvokeModel'],
-            resources: ['*'], // Restrict to model ARN if needed
+            resources: props.stage === 'dev' ? ['*'] : [
+                `arn:aws:bedrock:${props.env.region}::foundation-model/${props.bedrockModelID}`
+            ]
+            // TODO: Restrict to model ARN if needed
         });
 
         this.uploadLambda.addToRolePolicy(bedrockPolicy);
