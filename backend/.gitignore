@@ -1,0 +1,43 @@
+# Node.js (backend, frontend, infra)
+node_modules/
+dist/
+.nyc_output/
+coverage/
+.env
+.env.local
+.env.production
+.env.development
+*.log
+
+# AWS CDK
+cdk.out/
+*.tsbuildinfo
+
+# TypeScript
+*.d.ts
+*.js
+*.map
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# System files
+Thumbs.db
+
+# Build artifacts (frontend or Lambda build)
+build/
+out/
+.next/
+.cache/
+
+# CDK context cache
+cdk.context.json
+cdk.asset.*

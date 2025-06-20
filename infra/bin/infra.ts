@@ -13,6 +13,7 @@ const app = new App();
 
 const stage = process.env.STAGE || 'dev';
 
+// Validate required environment variables
 const requiredEnvVars = ['CDK_DEFAULT_ACCOUNT', 'CDK_DEFAULT_REGION', 'BEDROCK_MODEL_ID'];
 const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
 if (missingEnvVars.length > 0) {
