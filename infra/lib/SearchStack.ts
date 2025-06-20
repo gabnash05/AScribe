@@ -34,7 +34,7 @@ export class SearchStack extends Stack {
         // Create OpenSearch domain
         this.searchDomain = new Domain(this, 'AScribeSearchDomain', {
             version: EngineVersion.OPENSEARCH_2_9,
-            domainName: 'ascribe-search',
+            domainName: `ascribe-search-${props.stage}`,
             capacity: {
                 dataNodes: 1,
                 dataNodeInstanceType: 't3.small.search', // TODO: Small instance for development
@@ -53,7 +53,7 @@ export class SearchStack extends Stack {
                 enabled: true,
             },
             fineGrainedAccessControl: {
-                masterUserName: 'admin',
+                masterUserName: props.masterUserName,
             },
         });
 

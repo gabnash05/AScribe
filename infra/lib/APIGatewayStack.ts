@@ -79,10 +79,15 @@ export class APIGatewayStack extends Stack {
             cognitoUserPools: [userPool],
         });
 
-        // Documents
+        // Documents 
         this.addLambdaRoute('documents', 'POST', uploadLambda, authorizer);
         this.addLambdaRoute('documents', 'GET', getDocumentsLambda, authorizer);
 
+        // Search
+        this.addLambdaRoute('documents/search', 'POST', searchDocumentsLambda, authorizer);
+        this.addLambdaRoute('documents/search/initialize', 'POST', initializeSearchIndexLambda, authorizer);
+
+        // Individual Document
         this.addLambdaRoute('documents/{documentId}', 'GET', getDocumentLambda, authorizer);
         this.addLambdaRoute('documents/{documentId}', 'PUT', updateDocumentLambda, authorizer);
         this.addLambdaRoute('documents/{documentId}', 'DELETE', deleteDocumentLambda, authorizer);
@@ -108,17 +113,20 @@ export class APIGatewayStack extends Stack {
         this.addLambdaRoute('documents/{documentId}/questions/{questionId}', 'GET', getQuestionLambda, authorizer);
         this.addLambdaRoute('documents/{documentId}/questions/{questionId}', 'PUT', updateQuestionLambda, authorizer);
         this.addLambdaRoute('documents/{documentId}/questions/{questionId}', 'DELETE', deleteQuestionLambda, authorizer);
-
-        // Search
-        this.addLambdaRoute('documents/search', 'POST', searchDocumentsLambda, authorizer);
-        this.addLambdaRoute('documents/search/initialize', 'POST', initializeSearchIndexLambda, authorizer);
         
         // Add any additional routes as needed
     }
 
     private addLambdaRoute(path: string, method: string, lambdaFn: IFunction, authorizer: CognitoUserPoolsAuthorizer): void {
-        const resource = this.restApi.root.addResource(path);
-        resource.addMethod(method, new LambdaIntegration(lambdaFn), {
+        const pathSegments = path.split('/');
+        let currentResource = this.restApi.root;
+
+        for (const segment of pathSegments) {
+            const existingResource = currentResource.getResource(segment);
+            currentResource = existingResource ?? currentResource.addResource(segment);
+        }
+
+        currentResource.addMethod(method, new LambdaIntegration(lambdaFn), {
             authorizationType: AuthorizationType.COGNITO,
             authorizer,
         });

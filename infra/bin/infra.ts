@@ -13,12 +13,20 @@ const app = new App();
 
 const stage = process.env.STAGE || 'dev';
 
+const requiredEnvVars = ['CDK_DEFAULT_ACCOUNT', 'CDK_DEFAULT_REGION', 'BEDROCK_MODEL_ID'];
+const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+if (missingEnvVars.length > 0) {
+    throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
+}
+
 const commonProps: AscribeAppProps = {
     env: {
         account: process.env.CDK_DEFAULT_ACCOUNT!,
         region: process.env.CDK_DEFAULT_REGION!,
     },
-    stage: stage, // Default to 'dev' if not set
+    stage: stage,
+    masterUserName: process.env.MASTER_USER_NAME,
+    notificationEmail: process.env.ALARM_NOTIFICATION_EMAIL,
     tags: {
         Application: 'AScribe',
         Environment: stage,

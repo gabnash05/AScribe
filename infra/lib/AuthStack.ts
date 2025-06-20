@@ -31,11 +31,10 @@ export class AuthStack extends Stack {
             },
             accountRecovery: AccountRecovery.EMAIL_ONLY,
             standardAttributes: {
-                email: {
-                    required: true,
-                    mutable: false,
-                },
-                givenName: {
+             email: {
+                 required: true,
+                mutable: true,
+             },                givenName: {
                     required: true,
                     mutable: true,
                 }

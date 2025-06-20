@@ -16,7 +16,7 @@ export class DatabaseStack extends Stack {
         super(scope, id, props);
 
         this.documentsTable = new Table(this, 'DocumentsTable', {
-            tableName: 'AScribeDocuments',
+            tableName: `AScribeDocuments-${props.stage}`,
             partitionKey: { name: 'userId', type: AttributeType.STRING },
             sortKey: { name: 'documentId', type: AttributeType.STRING },
             removalPolicy: props.stage === 'dev' ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN, // TODO: Change to RETAIN in production
@@ -34,7 +34,7 @@ export class DatabaseStack extends Stack {
         // - extractedTextId: string (FK to extractedTextsTable)
 
         this.extractedTextsTable = new Table(this, 'ExtractedTextsTable', {
-            tableName: 'AScribeExtractedTexts',
+            tableName: `AScribeExtractedTexts-${props.stage}`,
             partitionKey: { name: 'extractedTextId', type: AttributeType.STRING },
             sortKey: { name: 'documentId', type: AttributeType.STRING },
             removalPolicy: props.stage === 'dev' ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN, // TODO: Change to RETAIN in production
@@ -52,7 +52,7 @@ export class DatabaseStack extends Stack {
         // - tokens: number (optional, for token count)
 
         this.summariesTable = new Table (this, 'SummariesTable', {
-            tableName: 'AScribeSummaries',
+            tableName: `AScribeSummaries-${props.stage}`,
             partitionKey: { name: 'documentId', type: AttributeType.STRING },
             sortKey: { name: 'summaryId', type: AttributeType.STRING },
             removalPolicy: props.stage === 'dev' ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN, // TODO: Change to RETAIN in production
@@ -66,7 +66,7 @@ export class DatabaseStack extends Stack {
         // - createdAt: string
 
         this.questionsTable = new Table(this, 'QuestionsTable', {
-            tableName: 'AScribeQuestions',
+            tableName: `AScribeQuestions-${props.stage}`,
             partitionKey: { name: 'documentId', type: AttributeType.STRING },
             sortKey: { name: 'questionsId', type: AttributeType.STRING },
             removalPolicy: props.stage === 'dev' ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN, // TODO: Change to RETAIN in production

@@ -190,14 +190,11 @@ export class ComputeStack extends Stack {
             resources: props.stage === 'dev' ? ['*'] : [
                 `arn:aws:bedrock:${props.env.region}::foundation-model/${props.bedrockModelID}`
             ]
-            // TODO: Restrict to model ARN if needed
         });
-
-        this.uploadLambda.addToRolePolicy(bedrockPolicy);
+        this.finalizeUploadLambda.addToRolePolicy(bedrockPolicy);
         this.createSummaryLambda.addToRolePolicy(bedrockPolicy);
         this.createQuestionsLambda.addToRolePolicy(bedrockPolicy);
     }
-
     private createLambda(name: string, handlerType: string, commonProps: any): NodejsFunction {
         return new NodejsFunction(this, `${name}Lambda`, {
             entry: path.join(__dirname, `../../backend/src/handlers/${handlerType}/${name}.ts`),
