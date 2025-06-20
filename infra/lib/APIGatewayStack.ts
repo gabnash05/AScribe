@@ -4,30 +4,34 @@ import { RestApi, LambdaIntegration, CognitoUserPoolsAuthorizer, Cors, Authoriza
 import { UserPool, UserPoolClient } from 'aws-cdk-lib/aws-cognito';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
 
-interface APIGatewayStackProps extends StackProps {
+import { AscribeAppProps } from '../types/ascribe-app-types';
+
+interface APIGatewayStackProps extends AscribeAppProps {
     userPool: UserPool;
     userPoolClient: UserPoolClient;
-    uploadLambda: IFunction;
-    finalizeUploadLambda: IFunction;
-    getDocumentLambda: IFunction;
-    getDocumentsLambda: IFunction;
-    updateDocumentLambda: IFunction;
-    deleteDocumentLambda: IFunction;
-    getExtractedTextLambda: IFunction;
-    updateExtractedTextLambda: IFunction;
-    deleteExtractedTextLambda: IFunction;
-    updateTagsLambda: IFunction;
-    createSummaryLambda: IFunction;
-    getSummaryLambda: IFunction;
-    updateSummaryLambda: IFunction;
-    deleteSummaryLambda: IFunction;
-    createQuestionsLambda: IFunction;
-    getQuestionsLambda: IFunction;
-    getQuestionLambda: IFunction;
-    updateQuestionLambda: IFunction;
-    deleteQuestionLambda: IFunction;
-    searchDocumentsLambda: IFunction;
-    initializeSearchIndexLambda: IFunction; 
+    lambdas: {
+        uploadLambda: IFunction;
+        finalizeUploadLambda: IFunction;
+        getDocumentLambda: IFunction;
+        getDocumentsLambda: IFunction;
+        updateDocumentLambda: IFunction;
+        deleteDocumentLambda: IFunction;
+        getExtractedTextLambda: IFunction;
+        updateExtractedTextLambda: IFunction;
+        deleteExtractedTextLambda: IFunction;
+        updateTagsLambda: IFunction;
+        createSummaryLambda: IFunction;
+        getSummaryLambda: IFunction;
+        updateSummaryLambda: IFunction;
+        deleteSummaryLambda: IFunction;
+        createQuestionsLambda: IFunction;
+        getQuestionsLambda: IFunction;
+        getQuestionLambda: IFunction;
+        updateQuestionLambda: IFunction;
+        deleteQuestionLambda: IFunction;
+        searchDocumentsLambda: IFunction;
+        initializeSearchIndexLambda: IFunction; 
+    }
 }
 
 export class APIGatewayStack extends Stack {
@@ -36,8 +40,9 @@ export class APIGatewayStack extends Stack {
     constructor(scope: Construct, id: string, props: APIGatewayStackProps) {
         super(scope, id, props);
 
+        const { userPool, userPoolClient } = props;
+
         const {
-            userPool,
             uploadLambda,
             finalizeUploadLambda,
             getDocumentLambda,
@@ -59,14 +64,14 @@ export class APIGatewayStack extends Stack {
             deleteQuestionLambda,
             searchDocumentsLambda,
             initializeSearchIndexLambda
-        } = props;
+        } = props.lambdas;
 
         this.restApi = new RestApi(this, 'AScribeRestApi', {
             description: 'AScribe REST API',
             defaultCorsPreflightOptions: {
                 allowHeaders: ['Authorization', 'Content-Type'],
                 allowMethods: Cors.ALL_METHODS,
-                allowOrigins: Cors.ALL_ORIGINS, // restrict in production
+                allowOrigins: props.stage === 'dev' ? Cors.ALL_ORIGINS : ['https://example.com']  // TODO: restrict in production
             },
         });
 

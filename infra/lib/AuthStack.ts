@@ -1,15 +1,15 @@
 import { Stack, StackProps } from 'aws-cdk-lib';
 import { UserPool, UserPoolClient, AccountRecovery, VerificationEmailStyle, UserPoolClientIdentityProvider } from 'aws-cdk-lib/aws-cognito';
-
 import { Construct } from 'constructs';
+import { AscribeAppProps } from '../types/ascribe-app-types';
 
-interface AuthStackProps extends StackProps {}
+interface AuthStackProps extends AscribeAppProps {}
 
 export class AuthStack extends Stack {
     public readonly userPool: UserPool;
     public readonly userPoolClient: UserPoolClient;
 	
-    constructor(scope: Construct, id: string, props?: AuthStackProps) {
+    constructor(scope: Construct, id: string, props: AuthStackProps) {
         super(scope, id, props);
 
         this.userPool = new UserPool(this, 'AScribeUserPool', {

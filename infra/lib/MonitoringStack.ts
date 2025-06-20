@@ -8,7 +8,9 @@ import * as cw from 'aws-cdk-lib/aws-cloudwatch';
 import { Duration } from 'aws-cdk-lib';
 import * as actions from 'aws-cdk-lib/aws-cloudwatch-actions';
 
-interface MonitoringStackProps extends StackProps {
+import { AscribeAppProps } from '../types/ascribe-app-types';
+
+interface MonitoringStackProps extends AscribeAppProps {
     criticalLambdas: Function[];
     regularLambdas: Function[];
     apiGateway: RestApi;
@@ -24,7 +26,7 @@ export class MonitoringStack extends Stack {
         const alarmTopic = new sns.Topic(this, 'AlarmTopic', {
             displayName: `AScribe Alarms`,
         });
-        alarmTopic.addSubscription(new subscriptions.EmailSubscription('nasayaokim@gmail.com'));
+        alarmTopic.addSubscription(new subscriptions.EmailSubscription('nasayaokim@gmail.com')); // TODO: Change email
 
         // Critical Lambdas Alarm (Max 5 Alarms)
         criticalLambdas.forEach(lambda => {
@@ -97,7 +99,7 @@ export class MonitoringStack extends Stack {
 
         new cw.Alarm(this, 'BedrockTokenUsageAlarm', {
             metric: totalTokens,
-            threshold: 500_000, // Example: 500K tokens/hour
+            threshold: 500_000, // 500K tokens/hour
             evaluationPeriods: 1,
             comparisonOperator: cw.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
             treatMissingData: cw.TreatMissingData.NOT_BREACHING,
