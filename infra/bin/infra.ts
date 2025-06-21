@@ -6,8 +6,11 @@ import { ComputeStack } from '../lib/ComputeStack';
 import { SearchStack } from '../lib/SearchStack';
 import { APIGatewayStack } from '../lib/APIGatewayStack';
 import { MonitoringStack } from '../lib/MonitoringStack';
-
 import { AscribeAppProps } from '../types/ascribe-app-types';
+import * as dotenv from 'dotenv';
+
+// Load environment variables from .env file
+dotenv.config({ path: '../../.env' });
 
 const app = new App();
 
