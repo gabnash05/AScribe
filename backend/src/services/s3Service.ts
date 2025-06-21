@@ -76,36 +76,71 @@ export async function moveTempToFinalPath({bucket, userId, documentId, tempKey}:
 
         return finalKey;
     } catch (error) {
-        throw new Error('')
+         if (error instanceof S3ServiceException) {
+            throw new Error(`Failed to move file from temp to final path: ${error.message}`);
+        }
+        throw new Error(`Unexpected error during file moving: ${
+            error instanceof Error ? error.message : 'Unknown error'
+        }`);
     }
 }
 
 export async function uploadExtractedText({bucket, documentId, userId, extractedText}: UploadExtractedTextParams): Promise<string> {
-    const key = `extracted-texts/${userId}/${documentId}.txt`;
+    try {
+        if (!extractedText || extractedText.length === 0) {
+            throw new Error('Extracted text cannot be empty');
+        }
 
-    const command = new PutObjectCommand({
-        Bucket: bucket,
-        Key: key,
-        Body: extractedText,
-        ContentType: 'text/plain'
-    });
+        if (!documentId || !userId) {
+            throw new Error('Document ID and User ID are required');
+        }
 
-    await s3Client.send(command);
+        const key = `extracted-texts/${userId}/${documentId}.txt`;
 
-    return key;
+        const command = new PutObjectCommand({
+            Bucket: bucket,
+            Key: key,
+            Body: extractedText,
+            ContentType: 'text/plain'
+        });
+
+        await s3Client.send(command);
+
+        return key;
+    } catch (error) {
+        if (error instanceof S3ServiceException) {
+            throw new Error(`Failed to upload extracted text: ${error.message}`);
+        }
+        throw new Error(`Unexpected error during file upload: ${
+            error instanceof Error ? error.message : 'Unknown error'
+        }`);
+    }
 }
 
 export async function getDocument({bucket, key}: getDocumentFromS3Params): Promise<Buffer> {
-    const command = new GetObjectCommand({
-        Bucket: bucket,
-        Key: key
-    });
+    try {
+        if (!bucket || !key) {
+            throw new Error('Bucket and key are required to retrieve the document');
+        }
+        
+        const command = new GetObjectCommand({
+            Bucket: bucket,
+            Key: key
+        });
 
-    const response = await s3Client.send(command);
-    
-    if (!response.Body) {
-        throw new Error(`Document not found at ${key}`);
+        const response = await s3Client.send(command);
+        
+        if (!response.Body) {
+            throw new Error(`Document not found at ${key}`);
+        }
+
+        return Buffer.from(await response.Body.transformToByteArray());
+    } catch (error) {
+        if (error instanceof S3ServiceException) {
+            throw new Error(`Failed to get document: ${error.message}`);
+        }
+        throw new Error(`Unexpected error during document retrieval: ${
+            error instanceof Error ? error.message : 'Unknown error'
+        }`);
     }
-
-    return Buffer.from(await response.Body.transformToByteArray());
 }
