@@ -1,3 +1,4 @@
+// PARAMS
 export interface UploadFileParams {
     bucket: string;
     fileBuffer: Buffer;
@@ -23,4 +24,10 @@ export interface UploadExtractedTextParams {
 export interface getDocumentFromS3Params {
     bucket: string;
     key: string;
+}
+
+// RESULTS  
+export interface S3UploadResult {
+    key: string;
+    url?: string;
 }

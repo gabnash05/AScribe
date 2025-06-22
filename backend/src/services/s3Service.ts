@@ -1,11 +1,11 @@
 import {S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, CopyObjectCommand, S3ServiceException} from '@aws-sdk/client-s3';
-import { UploadFileParams, MoveTempToFinalPathParams, UploadExtractedTextParams, getDocumentFromS3Params } from '../types/document-types';
+import { UploadFileParams, MoveTempToFinalPathParams, UploadExtractedTextParams, getDocumentFromS3Params, deleteDocumentFromS3Params, S3UploadResult } from '../types/document-types';
 
 import { v4 as uuidv4 } from 'uuid';
 
 const s3Client = new S3Client({ region: process.env.AWS_REGION });
 
-export async function uploadToTempPath({bucket, fileBuffer, contentType, userId, originalFileName}: UploadFileParams): Promise<string> {
+export async function uploadToTempPath({bucket, fileBuffer, contentType, userId, originalFileName}: UploadFileParams): Promise<S3UploadResult> {
     try {
         if (!fileBuffer || fileBuffer.length === 0) {
             throw new Error('File buffer cannot be empty');
@@ -30,7 +30,10 @@ export async function uploadToTempPath({bucket, fileBuffer, contentType, userId,
         
         await s3Client.send(command);
         
-        return tempKey;
+        return {
+            key: tempKey,
+            url: `https://${bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${tempKey}`,
+        };
     } catch (error) {
         if (error instanceof S3ServiceException) {
             throw new Error(`Failed to upload file to temp path: ${error.message}`);
@@ -39,7 +42,7 @@ export async function uploadToTempPath({bucket, fileBuffer, contentType, userId,
     }
 }
 
-export async function moveTempToFinalPath({bucket, userId, documentId, tempKey}: MoveTempToFinalPathParams): Promise<string> {
+export async function moveTempToFinalPath({bucket, userId, documentId, tempKey}: MoveTempToFinalPathParams): Promise<S3UploadResult> {
     try {
         if (!tempKey.startsWith(`temp/${userId}/`)) {
             throw new Error(`Invalid temp path: ${tempKey} does not belong to user ${userId}`);
@@ -74,7 +77,10 @@ export async function moveTempToFinalPath({bucket, userId, documentId, tempKey}:
             // Log the error but do not throw, as the copy operation was successful
         }
 
-        return finalKey;
+        return {
+            key: finalKey,
+            url: `https://${bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${finalKey}`,
+        };
     } catch (error) {
          if (error instanceof S3ServiceException) {
             throw new Error(`Failed to move file from temp to final path: ${error.message}`);
@@ -85,7 +91,7 @@ export async function moveTempToFinalPath({bucket, userId, documentId, tempKey}:
     }
 }
 
-export async function uploadExtractedText({bucket, documentId, userId, extractedText}: UploadExtractedTextParams): Promise<string> {
+export async function uploadExtractedText({bucket, documentId, userId, extractedText}: UploadExtractedTextParams): Promise<S3UploadResult> {
     try {
         if (!extractedText || extractedText.length === 0) {
             throw new Error('Extracted text cannot be empty');
@@ -106,7 +112,10 @@ export async function uploadExtractedText({bucket, documentId, userId, extracted
 
         await s3Client.send(command);
 
-        return key;
+        return {
+            key: key,
+            url: `https://${bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`,
+        };
     } catch (error) {
         if (error instanceof S3ServiceException) {
             throw new Error(`Failed to upload extracted text: ${error.message}`);
@@ -117,12 +126,12 @@ export async function uploadExtractedText({bucket, documentId, userId, extracted
     }
 }
 
-export async function getDocument({bucket, key}: getDocumentFromS3Params): Promise<Buffer> {
+export async function getDocumentFromS3({bucket, key}: getDocumentFromS3Params): Promise<Buffer> {
     try {
         if (!bucket || !key) {
             throw new Error('Bucket and key are required to retrieve the document');
         }
-        
+
         const command = new GetObjectCommand({
             Bucket: bucket,
             Key: key
@@ -140,6 +149,34 @@ export async function getDocument({bucket, key}: getDocumentFromS3Params): Promi
             throw new Error(`Failed to get document: ${error.message}`);
         }
         throw new Error(`Unexpected error during document retrieval: ${
+            error instanceof Error ? error.message : 'Unknown error'
+        }`);
+    }
+}
+
+export async function deleteDocumentFromS3({bucket, key}: deleteDocumentFromS3Params): Promise<boolean> {
+    try {
+        if (!bucket || !key) {
+            throw new Error('Bucket and key are required to delete the document');
+        }
+
+        const command = new DeleteObjectCommand({
+            Bucket: bucket,
+            Key: key
+        });
+
+        const response = await s3Client.send(command);
+
+        if (response.$metadata.httpStatusCode !== 204) {
+            throw new Error(`Failed to delete document at ${key}`);
+        }
+        
+        return true; // Return true if deletion was successful
+    } catch (error) {
+        if (error instanceof S3ServiceException) {
+            throw new Error(`Failed to delete document: ${error.message}`);
+        }
+        throw new Error(`Unexpected error during document deletion: ${
             error instanceof Error ? error.message : 'Unknown error'
         }`);
     }
