@@ -113,22 +113,14 @@ export class APIGatewayStack extends Stack {
         this.addLambdaRoute('documents/{documentId}/questions/{questionId}', 'GET', getQuestionLambda, authorizer);
         this.addLambdaRoute('documents/{documentId}/questions/{questionId}', 'PUT', updateQuestionLambda, authorizer);
         this.addLambdaRoute('documents/{documentId}/questions/{questionId}', 'DELETE', deleteQuestionLambda, authorizer);
-    private addLambdaRoute(path: string, method: string, lambdaFn: IFunction, authorizer: CognitoUserPoolsAuthorizer): void {
--       const resource = this.restApi.root.addResource(path);
-+       const pathSegments = path.split('/');
-+       let currentResource = this.restApi.root;
-+
-+       for (const segment of pathSegments) {
-+           const existingResource = currentResource.getResource(segment);
-+           currentResource = existingResource || currentResource.addResource(segment);
-+       }
-
--       resource.addMethod(method, new LambdaIntegration(lambdaFn), {
-+       currentResource.addMethod(method, new LambdaIntegration(lambdaFn), {
-           authorizationType: AuthorizationType.COGNITO,
-           authorizer,
-       });
+        
+        // Add any additional routes as needed
     }
+
+    private addLambdaRoute(path: string, method: string, lambdaFn: IFunction, authorizer: CognitoUserPoolsAuthorizer): void {
+        const pathSegments = path.split('/');
+        let currentResource = this.restApi.root;
+
         for (const segment of pathSegments) {
             const existingResource = currentResource.getResource(segment);
             currentResource = existingResource ?? currentResource.addResource(segment);
