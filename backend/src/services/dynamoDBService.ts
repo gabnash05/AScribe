@@ -5,7 +5,8 @@ import {
     UpdateItemCommand, 
     DynamoDBServiceException, 
     DeleteItemCommand, 
-    AttributeValue 
+    AttributeValue,
+    QueryCommand 
 } from "@aws-sdk/client-dynamodb";
 
 import { 
@@ -25,7 +26,8 @@ import {
     DeleteSummaryParams,
     DynamoDBSaveResult,
     DynamoDBUpdateResult,
-    DynamoDBDeleteResult
+    DynamoDBDeleteResult,
+    GetDocumentsByUserdParams
 } from "../types/dynamoDB-types";
 
 const dynamoDBClient = new DynamoDBClient({ region: process.env.AWS_REGION });
@@ -95,6 +97,43 @@ export async function getDocumentFromDynamoDB({ tableName, userId, documentId }:
             throw new Error(`Failed to get document from DynamoDB: ${error.message}`);
         }
         throw new Error(`Unexpected error during document retrieval: ${
+            error instanceof Error ? error.message : 'Unknown error'
+        }`);
+    }
+}
+
+export async function getDocumentsByUserFromDynamoDB({ tableName, userId }: GetDocumentsByUserdParams): Promise<DocumentRecord[]> {
+    try {
+        const command = new QueryCommand({
+            TableName: tableName,
+            KeyConditionExpression: 'userId = :userId',
+            ExpressionAttributeValues: {
+                ':userId': { S: userId}
+            }
+        });
+
+        const response = await dynamoDBClient.send(command);
+
+        if (!response.Items || response.Items.length === 0) {
+            return []; // Document not found
+        }
+        
+        return response.Items.map((item): DocumentRecord => ({
+            userId: item.userId.S!,
+            documentId: item.documentId.S!,
+            fileKey: item.fileKey.S!,
+            originalFilename: item.originalFilename.S!,
+            uploadDate: item.uploadDate.S!,
+            status: item.status.S! as 'temp' | 'verified',
+            tags: item.tags?.SS || [],
+            extractedTextId: item.extractedTextId?.S!
+        }));
+
+    } catch (error) {
+        if (error instanceof DynamoDBServiceException) {
+            throw new Error(`Failed to get documents by user from DynamoDB: ${error.message}`);
+        }
+        throw new Error(`Unexpected error during document retrieval by user: ${
             error instanceof Error ? error.message : 'Unknown error'
         }`);
     }

@@ -10,6 +10,11 @@ export interface GetDocumentParams {
     documentId: string;
 }
 
+export interface GetDocumentsByUserdParams {
+    tableName: string;
+    userId: string;
+}
+
 export interface UpdateDocumentParams {
     tableName: string;
     userId: string;
