@@ -90,8 +90,6 @@ export interface DocumentRecord {
 }
 
 export interface UpdateDocumentRecord { // Only fields that can be updated
-    userId: string;
-    documentId?: string;
     fileKey?: string;
     originalFilename?: string;
     uploadDate?: string;
@@ -148,4 +146,23 @@ export interface UpdateQuestionRecord {
     choices?: string[]; // Optional choices for multiple choice questions (optional)
     answer?: string; // The correct answer (optional)
     createdAt?: string; // ISO date string (optional)
+}
+
+// RESULTS
+export interface DynamoDBSaveResult {
+    success: boolean;
+    message?: string;
+    item?: DocumentRecord | ExtractedTextRecord | SummaryRecord | QuestionRecord;
+}
+
+export interface DynamoDBUpdateResult {
+    success: boolean;
+    message?: string;
+    item?: UpdateDocumentRecord | UpdateExtractedTextRecord | UpdateSummaryRecord | UpdateQuestionRecord;
+}
+
+export interface DynamoDBDeleteResult {
+    success: boolean;
+    message?: string;
+    item?: DocumentRecord | ExtractedTextRecord | SummaryRecord | QuestionRecord;
 }

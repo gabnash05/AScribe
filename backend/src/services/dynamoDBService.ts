@@ -23,12 +23,15 @@ import {
     UpdateQuestionParams,
     DeleteQuestionParams,
     DeleteSummaryParams,
+    DynamoDBSaveResult,
+    DynamoDBUpdateResult,
+    DynamoDBDeleteResult
 } from "../types/dynamoDB-types";
 
 const dynamoDBClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 
 // ---------- DOCUMENTS ----------
-export async function saveDocumentToDynamoDB({ tableName, document }: SaveDocumentParams): Promise<void> {
+export async function saveDocumentToDynamoDB({ tableName, document }: SaveDocumentParams): Promise<DynamoDBSaveResult> {
     try {
         const command = new PutItemCommand({
             TableName: tableName,
@@ -45,6 +48,12 @@ export async function saveDocumentToDynamoDB({ tableName, document }: SaveDocume
         });
 
         await dynamoDBClient.send(command)
+
+        return {
+            success: true,
+            message: 'Document saved successfully',
+            item: document,
+        };
     } catch (error) {
         if (error instanceof DynamoDBServiceException) {
             throw new Error(`Failed to save document to DynamoDB: ${error.message}`);
@@ -91,7 +100,7 @@ export async function getDocumentFromDynamoDB({ tableName, userId, documentId }:
     }
 }
 
-export async function updateDocumentInDynamoDB({ tableName, userId, documentId, document }: UpdateDocumentParams): Promise<void> {
+export async function updateDocumentInDynamoDB({ tableName, userId, documentId, document }: UpdateDocumentParams): Promise<DynamoDBUpdateResult> {
     try {
         const expressionParts: string[] = [];
         const attributeNames: Record<string, string> = {};
@@ -119,7 +128,10 @@ export async function updateDocumentInDynamoDB({ tableName, userId, documentId, 
             }
         }
 
-        if (expressionParts.length === 0) return;
+        if (expressionParts.length === 0) return {
+            success: false,
+            message: 'No fields to update'
+        };
 
         const command = new UpdateItemCommand({
             TableName: tableName,
@@ -134,6 +146,13 @@ export async function updateDocumentInDynamoDB({ tableName, userId, documentId, 
 
         await dynamoDBClient.send(command);
 
+        return {
+            success: true,
+            message: 'Document updated successfully',
+            item: {
+                ...document
+            }
+        }
     } catch (error) {
         if (error instanceof DynamoDBServiceException) {
             throw new Error(`Failed to update document in DynamoDB: ${error.message}`);
@@ -144,7 +163,7 @@ export async function updateDocumentInDynamoDB({ tableName, userId, documentId, 
     }
 }
 
-export async function deleteDocumentFromDynamoDB({ tableName, userId, documentId }: DeleteDocumentParams): Promise<void> {
+export async function deleteDocumentFromDynamoDB({ tableName, userId, documentId }: DeleteDocumentParams): Promise<DynamoDBDeleteResult> {
     try {
         const command = new DeleteItemCommand({
             TableName: tableName,
@@ -155,6 +174,11 @@ export async function deleteDocumentFromDynamoDB({ tableName, userId, documentId
         });
 
         await dynamoDBClient.send(command);
+
+        return {
+            success: true,
+            message: 'Document deleted successfully',
+        }
     } catch (error) {
         if (error instanceof DynamoDBServiceException) {
             throw new Error(`Failed to delete document from DynamoDB: ${error.message}`);
@@ -166,7 +190,7 @@ export async function deleteDocumentFromDynamoDB({ tableName, userId, documentId
 }
 
 // ---------- EXTRACTED TEXTS ----------
-export async function saveExtractedTextToDynamoDB({ tableName, extractedTextRecord }: SaveExtractedTextParams): Promise<void> {
+export async function saveExtractedTextToDynamoDB({ tableName, extractedTextRecord }: SaveExtractedTextParams): Promise<DynamoDBSaveResult> {
     try {
         const item: Record<string, AttributeValue> = {
             extractedTextId: { S: extractedTextRecord.extractedTextId },
@@ -194,6 +218,12 @@ export async function saveExtractedTextToDynamoDB({ tableName, extractedTextReco
         });
 
         await dynamoDBClient.send(command);
+
+        return {
+            success: true,
+            message: 'Extracted text saved successfully',
+            item: extractedTextRecord,
+        };
     } catch (error) {
         if (error instanceof DynamoDBServiceException) {
             throw new Error(`Failed to save extracted text to DynamoDB: ${error.message}`);
@@ -204,7 +234,7 @@ export async function saveExtractedTextToDynamoDB({ tableName, extractedTextReco
     }
 }
 
-export async function updateExtractedTextInDynamoDB({ tableName, extractedTextId, documentId, extractedTextRecord }: UpdateExtractedTextParams): Promise<void> {
+export async function updateExtractedTextInDynamoDB({ tableName, extractedTextId, documentId, extractedTextRecord }: UpdateExtractedTextParams): Promise<DynamoDBUpdateResult> {
     try {
         const expressionParts: string[] = [];
         const attributeValues: Record<string, AttributeValue> = {};
@@ -246,7 +276,10 @@ export async function updateExtractedTextInDynamoDB({ tableName, extractedTextId
             attributeValues[':questionsId'] = { SS: extractedTextRecord.questionsId };
         }
 
-        if (expressionParts.length === 0) return;
+        if (expressionParts.length === 0) return {
+            success: false,
+            message: 'No fields to update'
+        };
 
         const command = new UpdateItemCommand({
             TableName: tableName,
@@ -260,6 +293,14 @@ export async function updateExtractedTextInDynamoDB({ tableName, extractedTextId
         });
 
         await dynamoDBClient.send(command);
+
+        return {
+            success: true,
+            message: 'Extracted text updated successfully',
+            item: {
+                ...extractedTextRecord
+            }
+        }
     } catch (error) {
         if (error instanceof DynamoDBServiceException) {
             throw new Error(`Failed to update extracted text in DynamoDB: ${error.message}`);
@@ -271,7 +312,7 @@ export async function updateExtractedTextInDynamoDB({ tableName, extractedTextId
     }
 }
 
-export async function deleteExtractedTextFromDynamoDB({ tableName, extractedTextId, documentId }: DeleteExtractedTextParams): Promise<void> {
+export async function deleteExtractedTextFromDynamoDB({ tableName, extractedTextId, documentId }: DeleteExtractedTextParams): Promise<DynamoDBDeleteResult> {
     try {
         const command = new DeleteItemCommand({
             TableName: tableName,
@@ -282,6 +323,11 @@ export async function deleteExtractedTextFromDynamoDB({ tableName, extractedText
         });
 
         await dynamoDBClient.send(command);
+
+        return {
+            success: true,
+            message: 'Extracted text deleted successfully',
+        }
     } catch (error) {
         if (error instanceof DynamoDBServiceException) {
             throw new Error(`Failed to delete extractedTextRecord from DynamoDB: ${error.message}`);
@@ -294,7 +340,7 @@ export async function deleteExtractedTextFromDynamoDB({ tableName, extractedText
 
 // ---------- SUMMARIES ----------
 
-export async function saveSummary({ tableName, summary }: SaveSummaryParams): Promise<void> {
+export async function saveSummary({ tableName, summary }: SaveSummaryParams): Promise<DynamoDBSaveResult> {
     try {
         const command = new PutItemCommand({
             TableName: tableName,
@@ -307,6 +353,12 @@ export async function saveSummary({ tableName, summary }: SaveSummaryParams): Pr
         });
 
         await dynamoDBClient.send(command);
+
+        return {
+            success: true,
+            message: 'Summary saved successfully',
+            item: summary,
+        }
     } catch (error) {
         if (error instanceof DynamoDBServiceException) {
             throw new Error(`Failed to save summary to DynamoDB: ${error.message}`);
@@ -317,7 +369,7 @@ export async function saveSummary({ tableName, summary }: SaveSummaryParams): Pr
     }
 }
 
-export async function updateSummaryInDynamoDB({ tableName, documentId, summaryId, summary }: UpdateSummaryParams): Promise<void> {
+export async function updateSummaryInDynamoDB({ tableName, documentId, summaryId, summary }: UpdateSummaryParams): Promise<DynamoDBUpdateResult> {
     try {
         const expressionParts: string[] = [];
         const attributeValues: Record<string, AttributeValue> = {};
@@ -335,7 +387,10 @@ export async function updateSummaryInDynamoDB({ tableName, documentId, summaryId
             attributeValues[':createdAt'] = { S: summary.createdAt };
         }
 
-        if (expressionParts.length === 0) return;
+        if (expressionParts.length === 0) return {
+            success: false,
+            message: 'No fields to update'
+        };
 
         const command = new UpdateItemCommand({
             TableName: tableName,
@@ -349,6 +404,14 @@ export async function updateSummaryInDynamoDB({ tableName, documentId, summaryId
         });
 
         await dynamoDBClient.send(command);
+
+        return {
+            success: true,
+            message: 'Summary updated successfully',
+            item: {
+                ...summary
+            }
+        }
     } catch (error) {
         if (error instanceof DynamoDBServiceException) {
             throw new Error(`Failed to update summary in DynamoDB: ${error.message}`);
@@ -359,7 +422,7 @@ export async function updateSummaryInDynamoDB({ tableName, documentId, summaryId
     }
 }
 
-export async function deleteSummaryFromDynamoDB({ tableName, documentId, summaryId }: DeleteSummaryParams): Promise<void> {
+export async function deleteSummaryFromDynamoDB({ tableName, documentId, summaryId }: DeleteSummaryParams): Promise<DynamoDBDeleteResult> {
     try {
         const command = new DeleteItemCommand({
             TableName: tableName,
@@ -370,6 +433,11 @@ export async function deleteSummaryFromDynamoDB({ tableName, documentId, summary
         });
 
         await dynamoDBClient.send(command);
+
+        return {
+            success: true,
+            message: 'Summary deleted successfully',
+        }
     } catch (error) {
         if (error instanceof DynamoDBServiceException) {
             throw new Error(`Failed to delete summary from DynamoDB: ${error.message}`);
@@ -382,7 +450,7 @@ export async function deleteSummaryFromDynamoDB({ tableName, documentId, summary
 
 // ---------- QUESTIONS ----------
 
-export async function saveQuestionToDynamoDB({ tableName, question }: SaveQuestionParams): Promise<void> {
+export async function saveQuestionToDynamoDB({ tableName, question }: SaveQuestionParams): Promise<DynamoDBSaveResult> {
     try {
         const command = new PutItemCommand({
             TableName: tableName,
@@ -398,6 +466,12 @@ export async function saveQuestionToDynamoDB({ tableName, question }: SaveQuesti
         });
 
         await dynamoDBClient.send(command);
+
+        return {
+            success: true,
+            message: 'Question saved successfully',
+            item: question,
+        }
     } catch (error) {
         if (error instanceof DynamoDBServiceException) {
             throw new Error(`Failed to save question to DynamoDB: ${error.message}`);
@@ -408,7 +482,7 @@ export async function saveQuestionToDynamoDB({ tableName, question }: SaveQuesti
     }
 }
 
-export async function updateQuestionInDynamoDB({ tableName, documentId, questionsId, question }: UpdateQuestionParams): Promise<void> {
+export async function updateQuestionInDynamoDB({ tableName, documentId, questionsId, question }: UpdateQuestionParams): Promise<DynamoDBUpdateResult> {
     try {
         const expressionParts: string[] = [];
         const attributeValues: Record<string, AttributeValue> = {};
@@ -444,7 +518,10 @@ export async function updateQuestionInDynamoDB({ tableName, documentId, question
             attributeValues[':choices'] = { SS: question.choices };
         }
 
-        if (expressionParts.length === 0) return;
+        if (expressionParts.length === 0) return {
+            success: false,
+            message: 'No fields to update'
+        };
 
         const command = new UpdateItemCommand({
             TableName: tableName,
@@ -458,6 +535,14 @@ export async function updateQuestionInDynamoDB({ tableName, documentId, question
         });
 
         await dynamoDBClient.send(command);
+
+        return  {
+            success: true,
+            message: 'Question updated successfully',
+            item: {
+                ...question
+            }
+        }
     } catch (error) {
         if (error instanceof DynamoDBServiceException) {
             throw new Error(`Failed to update question in DynamoDB: ${error.message}`);
@@ -468,7 +553,7 @@ export async function updateQuestionInDynamoDB({ tableName, documentId, question
     }
 }
 
-export async function deleteQuestionFromDynamoDB({ tableName, documentId, questionsId }: DeleteQuestionParams): Promise<void> {
+export async function deleteQuestionFromDynamoDB({ tableName, documentId, questionsId }: DeleteQuestionParams): Promise<DynamoDBDeleteResult> {
     try {
         const command = new DeleteItemCommand({
             TableName: tableName,
@@ -479,6 +564,11 @@ export async function deleteQuestionFromDynamoDB({ tableName, documentId, questi
         });
 
         await dynamoDBClient.send(command);
+
+        return {
+            success: true,
+            message: 'Question deleted successfully',
+        }
     } catch (error) {
         if (error instanceof DynamoDBServiceException) {
             throw new Error(`Failed to delete question from DynamoDB: ${error.message}`);
@@ -488,3 +578,7 @@ export async function deleteQuestionFromDynamoDB({ tableName, documentId, questi
         }`);
     }
 }
+
+// TODO:
+// - Log errors to CloudWatch
+// - Functions for getting multiple records

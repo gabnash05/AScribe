@@ -26,6 +26,11 @@ export interface getDocumentFromS3Params {
     key: string;
 }
 
+export interface deleteDocumentFromS3Params {
+    bucket: string;
+    key: string;
+}
+
 // RESULTS  
 export interface S3UploadResult {
     key: string;
