@@ -1,6 +1,6 @@
 // PARAMS
-export interface StartTextExtractionParams {
-    bucket: string;
+export interface StartDocumentTextDetectionParams {
+    bucket: string; 
     key: string;
     userId: string;
     documentId: string;
@@ -9,11 +9,6 @@ export interface StartTextExtractionParams {
 }
 
 // RESULT
-export interface TextractStartResult {
-    success: boolean;
-    message?: string;
-    jobId: string | null;
-}
 
 export interface TextractGetResult {
     success: boolean;

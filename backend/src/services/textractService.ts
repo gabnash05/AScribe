@@ -1,29 +1,56 @@
 import {
     TextractClient,
     StartDocumentTextDetectionCommand,
+    DetectDocumentTextCommand,
     GetDocumentTextDetectionCommand,
     TextractServiceException,
-    StartDocumentTextDetectionCommandInput,
-    GetDocumentTextDetectionCommandInput,
-} from "@aws-sdk/client-textract";
+    DocumentLocation,
+    Block   
+} from '@aws-sdk/client-textract';
 
-import { StartTextExtractionParams, TextractStartResult, TextractGetResult } from "../types/textract-types";
-import { DocumentLocation, NotificationChannel } from "@aws-sdk/client-textract";
-import formatTextractJobTag from "../utils/formatTextractJobTag";
+import { StartDocumentTextDetectionParams} from '../types/textract-types'
+import formatTextractJobTag from '../utils/formatTextractJobTag';
 
 const textractClient = new TextractClient({ region: process.env.AWS_REGION });
 
-// FILE FORMATS SUPPORTED BY TEXTRACT
-// .pdf, .tiff, .jpg, .jpeg, .png, .bmp, .txt, .md
+export interface TextractResult {
+    text: string;
+    pageCount?: number;
+    confidence?: number;
+    blocks?: Block[];
+}
 
-export async function startTextExtractionFromS3({
+export async function analyzeDocumentImage(documentBytes: Uint8Array): Promise<TextractResult> {
+    try {
+        if (!documentBytes || documentBytes.length === 0) {
+            throw new Error('Document bytes cannot be empty');
+        }
+
+        const command = new DetectDocumentTextCommand({
+            Document: { Bytes: documentBytes }
+        });
+
+        const response = await textractClient.send(command);
+
+        return processTextractResponse({ Blocks: response.Blocks });
+    } catch (error) {
+        if (error instanceof TextractServiceException) {
+            throw new Error(`Failed to analyze document image: ${error.message}`);
+        }
+        throw new Error(`Unexpected error during image analysis: ${
+            error instanceof Error ? error.message : 'Unknown error'
+        }`);
+    }
+}
+
+export async function startDocumentTextDetection({
     bucket,
     key,
     userId,
     documentId,
     snsTopicArn,
     roleArn
-}: StartTextExtractionParams): Promise<TextractStartResult> {
+}: StartDocumentTextDetectionParams): Promise<{ jobId: string }> {
     try {
         const documentLocation: DocumentLocation = {
             S3Object: {
@@ -32,34 +59,90 @@ export async function startTextExtractionFromS3({
             }
         };
 
-        const notificationChannel: NotificationChannel = {
-            SNSTopicArn: snsTopicArn,
-            RoleArn: roleArn
-        };
-
         const command = new StartDocumentTextDetectionCommand({
             DocumentLocation: documentLocation,
-            NotificationChannel: notificationChannel,
+            NotificationChannel: {
+                RoleArn: roleArn,
+                SNSTopicArn: snsTopicArn
+            },
             JobTag: formatTextractJobTag(userId, documentId),
         });
 
         const response = await textractClient.send(command);
 
         if (!response.JobId) {
-            throw new Error('Failed to start Textract job: JobId not returned');
+            throw new Error('Textract job failed to start');
         }
 
-        return {
-            success: true,
-            message: 'Textract job started successfully',
-            jobId: response.JobId,
-        }
+        return { jobId: response.JobId };
     } catch (error) {
         if (error instanceof TextractServiceException) {
-            throw new Error(`Textract error while starting job: ${error.message}`);
+            throw new Error(`Failed to start Textract job: ${error.message}`);
         }
-        throw new Error(`Unexpected error while starting Textract job: ${
+        throw new Error(`Unexpected error during job start: ${
             error instanceof Error ? error.message : 'Unknown error'
         }`);
     }
+}
+
+export async function getDocumentAnalysisResults(jobId: string): Promise<TextractResult> {
+    try {
+        if (!jobId) {
+            throw new Error('Job ID is required to retrieve Textract results');
+        }
+
+        let paginationToken: string | undefined;
+        let allBlocks: Block[] = [];
+        let pageCount = 0;
+
+        do {
+            const command = new GetDocumentTextDetectionCommand({
+                JobId: jobId,
+                NextToken: paginationToken
+            });
+
+            const response = await textractClient.send(command);
+
+            if (response.Blocks) {
+                allBlocks.push(...response.Blocks);
+            }
+
+            if (response.DocumentMetadata?.Pages) {
+                pageCount = response.DocumentMetadata.Pages;
+            }
+
+            paginationToken = response.NextToken;
+        } while (paginationToken);
+
+        return processTextractResponse({
+            Blocks: allBlocks,
+            pageCount
+        });
+    } catch (error) {
+        if (error instanceof TextractServiceException) {
+            throw new Error(`Failed to retrieve Textract job results: ${error.message}`);
+        }
+        throw new Error(`Unexpected error during result retrieval: ${
+            error instanceof Error ? error.message : 'Unknown error'
+        }`);
+    }
+}
+
+// --- Pure Textract Helper Functions --- //
+function processTextractResponse(response: { Blocks?: Block[]; pageCount?: number }): TextractResult {
+    const blocks = response.Blocks || [];
+    const lines = blocks.filter(block => block.BlockType === 'LINE');
+
+    return {
+        text: lines.map(line => line.Text || '').join('\n'),
+        pageCount: response.pageCount || blocks.filter(b => b.BlockType === 'PAGE').length,
+        confidence: calculateAverageConfidence(lines),
+        blocks
+    };
+}
+
+function calculateAverageConfidence(lines: Block[]): number {
+    if (lines.length === 0) return 0;
+    const total = lines.reduce((sum, line) => sum + (line.Confidence || 0), 0);
+    return total / lines.length;
 }
