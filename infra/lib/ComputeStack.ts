@@ -4,7 +4,9 @@ import { Table } from "aws-cdk-lib/aws-dynamodb";
 import { Construct } from 'constructs';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
-import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { PolicyStatement, Effect, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { Topic } from 'aws-cdk-lib/aws-sns';
+import { LambdaSubscription } from 'aws-cdk-lib/aws-sns-subscriptions';
 import * as path from 'path';
 
 import { AscribeAppProps } from '../types/ascribe-app-types';
@@ -50,6 +52,10 @@ export class ComputeStack extends Stack {
     // Search Handlers
     public readonly searchDocumentsLambda: NodejsFunction;
     public readonly initializeSearchIndexLambda: NodejsFunction;
+
+    // Textract Handlers and Topics
+    public readonly handleTextractJobCompletionLambda: NodejsFunction;
+    public readonly textractNotificationTopic: Topic;
 
     constructor(scope: Construct, id: string, props: ComputeStackProps) {
         super(scope, id, props);
@@ -132,12 +138,19 @@ export class ComputeStack extends Stack {
         this.searchDocumentsLambda = this.createLambda('searchDocuments', 'Search', lambdaPropsWithSearch);
         this.initializeSearchIndexLambda = this.createLambda('initializeSearchIndex', 'Search', lambdaPropsWithSearch);
 
+        // Textract Lambda functions
+        this.handleTextractJobCompletionLambda = this.createLambda('handleTextractJobCompletion', 'OCR', lambdaProps);
+
+        // 
         // S3 Permissions
+        // 
+
+        // Document Bucket
         documentBucket.grantReadWrite(this.uploadLambda);
         documentBucket.grantReadWrite(this.finalizeUploadLambda);
         documentBucket.grantRead(this.getDocumentLambda);
         documentBucket.grantRead(this.getDocumentsLambda);
-        documentBucket.grantWrite(this.updateDocumentLambda);
+        documentBucket.grantWrite(this.updateDocumentLambda); // May not be required since metadata is stored in DynamoDB
         documentBucket.grantWrite(this.deleteDocumentLambda);
 
         // Lambdas that only read S3 references
@@ -145,8 +158,11 @@ export class ComputeStack extends Stack {
         documentBucket.grantRead(this.getSummaryLambda);
         documentBucket.grantRead(this.getQuestionsLambda);
         documentBucket.grantRead(this.searchDocumentsLambda);
+        documentBucket.grantRead(this.handleTextractJobCompletionLambda);
 
+        // 
         // DynamoDB Permissions
+        // 
 
         // Documents Table
         documentsTable.grantReadWriteData(this.uploadLambda);
@@ -156,6 +172,7 @@ export class ComputeStack extends Stack {
         documentsTable.grantReadWriteData(this.updateDocumentLambda);
         documentsTable.grantReadWriteData(this.deleteDocumentLambda);
         documentsTable.grantReadWriteData(this.updateTagsLambda);
+        documentsTable.grantReadWriteData(this.handleTextractJobCompletionLambda);
 
         // Summaries and Questions may need document metadata read
         documentsTable.grantReadData(this.createSummaryLambda);
@@ -166,6 +183,7 @@ export class ComputeStack extends Stack {
         extractedTextsTable.grantReadData(this.getExtractedTextLambda);
         extractedTextsTable.grantReadWriteData(this.updateExtractedTextLambda);
         extractedTextsTable.grantReadWriteData(this.deleteExtractedTextLambda);
+        extractedTextsTable.grantWriteData(this.handleTextractJobCompletionLambda);
 
         // Needed for summary/question generation
         extractedTextsTable.grantReadData(this.createSummaryLambda);
@@ -184,7 +202,9 @@ export class ComputeStack extends Stack {
         questionsTable.grantReadWriteData(this.updateQuestionLambda);
         questionsTable.grantReadWriteData(this.deleteQuestionLambda);
 
+        // 
         // Bedrock Permissions
+        //
         const bedrockPolicy = new PolicyStatement({
             actions: ['bedrock:InvokeModel'],
             resources: props.stage === 'dev' ? ['*'] : [
@@ -194,7 +214,35 @@ export class ComputeStack extends Stack {
         this.finalizeUploadLambda.addToRolePolicy(bedrockPolicy);
         this.createSummaryLambda.addToRolePolicy(bedrockPolicy);
         this.createQuestionsLambda.addToRolePolicy(bedrockPolicy);
+
+        // 
+        // OCR Components
+        // 
+        this.textractNotificationTopic = new Topic(this, 'TextractNotificationTopic', {
+            displayName: 'Textract Job Completion Notifications',
+        });
+
+        this.textractNotificationTopic.addSubscription(
+            new LambdaSubscription(this.handleTextractJobCompletionLambda)
+        );
+
+        this.textractNotificationTopic.addToResourcePolicy(
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: ['sns:Publish'],
+                principals: [new ServicePrincipal('textract.amazonaws.com')],
+                resources: [this.textractNotificationTopic.topicArn],
+            })
+        );
+
+        this.handleTextractJobCompletionLambda.addToRolePolicy(
+            new PolicyStatement({
+                actions: ['textract:GetDocumentTextDetection'],
+                resources: ['*'], // TODO: Restrict to specific resources in production
+            })
+        );
     }
+
     private createLambda(name: string, handlerType: string, commonProps: any): NodejsFunction {
         return new NodejsFunction(this, `${name}Lambda`, {
             entry: path.join(__dirname, `../../backend/src/handlers/${handlerType}/${name}.ts`),

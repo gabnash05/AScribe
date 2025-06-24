@@ -620,4 +620,3 @@ export async function deleteQuestionFromDynamoDB({ tableName, documentId, questi
 
 // TODO:
 // - Log errors to CloudWatch
-// - Functions for getting multiple records

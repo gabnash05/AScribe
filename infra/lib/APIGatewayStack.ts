@@ -3,6 +3,7 @@ import { Construct } from 'constructs';
 import { RestApi, LambdaIntegration, CognitoUserPoolsAuthorizer, Cors, AuthorizationType } from 'aws-cdk-lib/aws-apigateway';
 import { UserPool, UserPoolClient } from 'aws-cdk-lib/aws-cognito';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
+import { Topic } from 'aws-cdk-lib/aws-sns';
 
 import { AscribeAppProps } from '../types/ascribe-app-types';
 
@@ -30,8 +31,10 @@ interface APIGatewayStackProps extends AscribeAppProps {
         updateQuestionLambda: IFunction;
         deleteQuestionLambda: IFunction;
         searchDocumentsLambda: IFunction;
-        initializeSearchIndexLambda: IFunction; 
+        initializeSearchIndexLambda: IFunction;
+        handleTextractJobCompletionLambda: IFunction;
     }
+    textractNotificationTopic: Topic;
 }
 
 export class APIGatewayStack extends Stack {

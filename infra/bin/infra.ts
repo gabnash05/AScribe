@@ -100,13 +100,16 @@ const apiGatewayStack = new APIGatewayStack(app, `AScribeApiGatewayStack-${stage
         deleteQuestionLambda: computeStack.deleteQuestionLambda,
         searchDocumentsLambda: computeStack.searchDocumentsLambda,
         initializeSearchIndexLambda: computeStack.initializeSearchIndexLambda,
-    }
+        handleTextractJobCompletionLambda: computeStack.handleTextractJobCompletionLambda,
+    },
+    textractNotificationTopic: computeStack.textractNotificationTopic,
 });
 
 // Monitoring stack (depends on compute and API Gateway)
 const criticalLambdas = [
     computeStack.uploadLambda,
     computeStack.finalizeUploadLambda,
+    // computeStack.handleTextractJobCompletionLambda, add in prod
     computeStack.getDocumentLambda,
     computeStack.createSummaryLambda,
     computeStack.createQuestionsLambda,

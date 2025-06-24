@@ -35,7 +35,7 @@ export class DatabaseStack extends Stack {
 
         this.extractedTextsTable = new Table(this, 'ExtractedTextsTable', {
             tableName: `AScribeExtractedTexts-${props.stage}`,
-            partitionKey: { name: 'extractedTextId', type: AttributeType.STRING },
+            partitionKey: { name: 'extractedTextId', type: AttributeType.STRING },  
             sortKey: { name: 'documentId', type: AttributeType.STRING },
             removalPolicy: props.stage === 'dev' ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN, // TODO: Change to RETAIN in production
             billingMode: BillingMode.PAY_PER_REQUEST,
