@@ -9,7 +9,11 @@ export interface StartDocumentTextDetectionParams {
 }
 
 // RESULT
-
+export interface startDocumentTextDetectionParams {
+    success: boolean;
+    message?: string;
+    jobId: string;
+}
 export interface TextractGetResult {
     success: boolean;
     message?: string;

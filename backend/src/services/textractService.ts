@@ -8,7 +8,7 @@ import {
     Block   
 } from '@aws-sdk/client-textract';
 
-import { StartDocumentTextDetectionParams} from '../types/textract-types'
+import { StartDocumentTextDetectionParams, startDocumentTextDetectionParams } from '../types/textract-types'
 import formatTextractJobTag from '../utils/formatTextractJobTag';
 
 const textractClient = new TextractClient({ region: process.env.AWS_REGION });
@@ -50,8 +50,20 @@ export async function startDocumentTextDetection({
     documentId,
     snsTopicArn,
     roleArn
-}: StartDocumentTextDetectionParams): Promise<{ jobId: string }> {
+}: StartDocumentTextDetectionParams): Promise<startDocumentTextDetectionParams> {
     try {
+        if (!bucket || !key) {
+            throw new Error('Bucket and key are required to start Textract job');
+        }
+
+        if (!userId || !documentId) {
+            throw new Error('User ID and Document ID are required for job tagging');
+        }
+
+        if (!snsTopicArn || !roleArn) {
+            throw new Error('SNS Topic ARN and Role ARN are required for notifications');
+        }
+
         const documentLocation: DocumentLocation = {
             S3Object: {
                 Bucket: bucket,
@@ -74,7 +86,11 @@ export async function startDocumentTextDetection({
             throw new Error('Textract job failed to start');
         }
 
-        return { jobId: response.JobId };
+        return {
+            success: true,
+            message: 'Textract job started successfully',
+            jobId: response.JobId 
+        };
     } catch (error) {
         if (error instanceof TextractServiceException) {
             throw new Error(`Failed to start Textract job: ${error.message}`);
