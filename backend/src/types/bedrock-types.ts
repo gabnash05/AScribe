@@ -21,7 +21,7 @@ export interface GenerateQuestionParams {
 export interface CleanExtractedTextWithBedrockResult {
     cleanedText: string;
     tags: string[];
-    filePath: string
+    suggestedFilePath: string
 }
 
 export interface GenerateSummaryResult {
