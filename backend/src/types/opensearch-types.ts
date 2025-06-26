@@ -10,6 +10,8 @@ export interface DeleteDocumentParams {
 export interface SearchDocumentsParams {
     query: string;
     userId: string;
+    from?: number;
+    size?: number;
 }
 
 export interface SearchDocumentsResult {
