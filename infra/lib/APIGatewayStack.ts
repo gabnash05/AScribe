@@ -11,7 +11,6 @@ interface APIGatewayStackProps extends AscribeAppProps {
     userPool: UserPool;
     userPoolClient: UserPoolClient;
     lambdas: {
-        uploadLambda: IFunction;
         finalizeUploadLambda: IFunction;
         getDocumentLambda: IFunction;
         getDocumentsLambda: IFunction;
@@ -46,7 +45,6 @@ export class APIGatewayStack extends Stack {
         const { userPool, userPoolClient } = props;
 
         const {
-            uploadLambda,
             finalizeUploadLambda,
             getDocumentLambda,
             getDocumentsLambda,
@@ -83,7 +81,7 @@ export class APIGatewayStack extends Stack {
         });
 
         // Documents 
-        this.addLambdaRoute('documents', 'POST', uploadLambda, authorizer);
+        // this.addLambdaRoute('documents', 'POST', uploadLambda, authorizer);
         this.addLambdaRoute('documents', 'GET', getDocumentsLambda, authorizer);
 
         // Search

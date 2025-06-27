@@ -136,7 +136,7 @@ export async function generateQuestion({
             throw new Error('No JSON array found in response');
         }
 
-        let questions: QuestionItem[] = JSON.parse(jsonMatch[0]);
+        let questions: QuestionItem[] = JSON.parse(jsonMatch[0]); 
 
         // Validate each question
         if (!Array.isArray(questions)) {
@@ -147,7 +147,7 @@ export async function generateQuestion({
         for (const q of questions) {
             try {
                 // Validate question structure
-                if (typeof q !== 'object' || q === null) {
+                 if (typeof q !== 'object' || q === null) {
                     console.warn('Skipping invalid question format');
                     continue;
                 }

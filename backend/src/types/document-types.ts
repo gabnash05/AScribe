@@ -31,8 +31,20 @@ export interface deleteDocumentFromS3Params {
     key: string;
 }
 
+export interface GetS3ObjectMetadataParams {
+    bucket: string;
+    key: string;
+}
+
 // RESULTS  
 export interface S3UploadResult {
     key: string;
     url?: string;
+}
+
+export interface GetS3ObjectMetadataResult {
+    userId: string;
+    documentId: string;
+    contentType: string;
+    fileSize: number;
 }

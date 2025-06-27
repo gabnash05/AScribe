@@ -1,5 +1,23 @@
-import {S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, CopyObjectCommand, S3ServiceException} from '@aws-sdk/client-s3';
-import { UploadFileParams, MoveTempToFinalPathParams, UploadExtractedTextParams, getDocumentFromS3Params, deleteDocumentFromS3Params, S3UploadResult } from '../types/document-types';
+import {
+    S3Client, 
+    PutObjectCommand, 
+    GetObjectCommand, 
+    DeleteObjectCommand, 
+    CopyObjectCommand, 
+    S3ServiceException,
+    HeadObjectCommand
+} from '@aws-sdk/client-s3';
+
+import { 
+    UploadFileParams, 
+    MoveTempToFinalPathParams, 
+    UploadExtractedTextParams, 
+    getDocumentFromS3Params, 
+    deleteDocumentFromS3Params, 
+    S3UploadResult,
+    GetS3ObjectMetadataParams,
+    GetS3ObjectMetadataResult
+} from '../types/document-types';
 
 import { v4 as uuidv4 } from 'uuid';
 
@@ -177,6 +195,35 @@ export async function deleteDocumentFromS3({bucket, key}: deleteDocumentFromS3Pa
             throw new Error(`Failed to delete document: ${error.message}`);
         }
         throw new Error(`Unexpected error during document deletion: ${
+            error instanceof Error ? error.message : 'Unknown error'
+        }`);
+    }
+}
+
+export async function getS3ObjectMetadata({ bucket, key }: GetS3ObjectMetadataParams): Promise<GetS3ObjectMetadataResult> {
+    try {
+        const headCommand = new HeadObjectCommand({
+            Bucket: bucket,
+            Key: key
+        });
+
+        const response = await s3Client.send(headCommand);
+
+        if (!response.Metadata || !response.Metadata['uploaded-by']) {
+            throw new Error('Missing required metadata on S3 object');
+        }
+
+        return {
+            userId: response.Metadata['uploaded-by'],
+            documentId: response.Metadata['document-id'] || uuidv4(),
+            contentType: response.ContentType || 'application/octet-stream',
+            fileSize: response.ContentLength || 0
+        };
+    } catch (error) {
+        if (error instanceof S3ServiceException) {
+            throw new Error(`Failed to get document metadata: ${error.message}`);
+        }
+        throw new Error(`Unexpected error during document metadata retrieval: ${
             error instanceof Error ? error.message : 'Unknown error'
         }`);
     }

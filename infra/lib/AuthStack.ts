@@ -1,9 +1,12 @@
 import { Stack, StackProps } from 'aws-cdk-lib';
-import { UserPool, UserPoolClient, AccountRecovery, VerificationEmailStyle, UserPoolClientIdentityProvider } from 'aws-cdk-lib/aws-cognito';
+import { UserPool, UserPoolClient, AccountRecovery, VerificationEmailStyle, UserPoolClientIdentityProvider, CfnIdentityPool, CfnIdentityPoolRoleAttachment } from 'aws-cdk-lib/aws-cognito';
+import { Role, FederatedPrincipal, PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { AscribeAppProps } from '../types/ascribe-app-types';
 
-interface AuthStackProps extends AscribeAppProps {}
+interface AuthStackProps extends AscribeAppProps {
+    documentBucketName: string;
+}
 
 export class AuthStack extends Stack {
     public readonly userPool: UserPool;
@@ -59,6 +62,53 @@ export class AuthStack extends Stack {
                 userPassword: true,
                 userSrp: true,
                 adminUserPassword: true,
+            },
+        });
+
+        // Identity Pool
+        const identityPool = new CfnIdentityPool(this, 'AScribeIdentityPool', {
+            identityPoolName: 'AScribeIdentityPool',
+            allowUnauthenticatedIdentities: false, // change to true if you want guest access
+            cognitoIdentityProviders: [
+                {
+                    clientId: this.userPoolClient.userPoolClientId,
+                    providerName: this.userPool.userPoolProviderName,
+                },
+            ],
+        });
+
+        // IAM Role for authenticated users
+        const authenticatedRole = new Role(this, 'AScribeAuthenticatedRole', {
+            assumedBy: new FederatedPrincipal(
+                'cognito-identity.amazonaws.com',
+                {
+                    StringEquals: {
+                        'cognito-identity.amazonaws.com:aud': identityPool.ref,
+                    },
+                        'ForAnyValue:StringLike': {
+                            'cognito-identity.amazonaws.com:amr': 'authenticated',
+                    },
+                },
+                'sts:AssumeRoleWithWebIdentity'
+            ),
+        });
+
+        authenticatedRole.addToPolicy(
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: ['s3:PutObject', 's3:GetObject', 's3:DeleteObject'],
+                resources: [
+                    `arn:aws:s3:::${props.documentBucketName}/temp/*`,
+                ],
+            })
+        );
+
+        // Attach role to Identity Pool
+        new CfnIdentityPoolRoleAttachment(this, 'IdentityPoolRoleAttachment', {
+            identityPoolId: identityPool.ref,
+            roles: {
+                authenticated: authenticatedRole.roleArn,
+                // unauthenticated: unauthenticatedRole.roleArn // Optional
             },
         });
     }

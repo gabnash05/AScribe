@@ -16,7 +16,7 @@ const textractClient = new TextractClient({ region: process.env.AWS_REGION });
 export interface TextractResult {
     text: string;
     pageCount?: number;
-    confidence?: number;
+    confidence: number;
     blocks?: Block[];
 }
 

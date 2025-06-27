@@ -37,10 +37,14 @@ const commonProps: AscribeAppProps = {
     },
 };
 
+
 // Base infrastructure stacks
-const authStack = new AuthStack(app, `AScribeAuthStack-${stage}`, commonProps);
 const databaseStack = new DatabaseStack(app, `AScribeDatabaseStack-${stage}`, commonProps);
 const storageStack = new StorageStack(app, `AScribeStorageStack-${stage}`, commonProps);
+const authStack = new AuthStack(app, `AScribeAuthStack-${stage}`, {
+    ...commonProps,
+    documentBucketName: storageStack.documentBucketName, 
+});
 
 // Search stack (depends on nothing)
 const searchStack = new SearchStack(app, `AScribeSearchStack-${stage}`, {
@@ -58,6 +62,9 @@ const computeStack = new ComputeStack(app, `AScribeComputeStack-${stage}`, {
     openSearchEndpoint: searchStack.searchDomain.domainEndpoint,
     bedrockModelID: process.env.BEDROCK_MODEL_ID!, // TODO: set this from config
 });
+
+// Add the Lambda notification to StorageStack
+storageStack.addUploadLambdaTrigger(computeStack.uploadLambda);
 
 // Update search stack with actual Lambda references
 searchStack.bindLambdas({
@@ -79,7 +86,6 @@ const apiGatewayStack = new APIGatewayStack(app, `AScribeApiGatewayStack-${stage
     userPool: authStack.userPool,
     userPoolClient: authStack.userPoolClient,
     lambdas: {
-        uploadLambda: computeStack.uploadLambda,
         finalizeUploadLambda: computeStack.finalizeUploadLambda,
         getDocumentLambda: computeStack.getDocumentLambda,
         getDocumentsLambda: computeStack.getDocumentsLambda,
