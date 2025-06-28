@@ -27,7 +27,7 @@ import {
     DynamoDBSaveResult,
     DynamoDBUpdateResult,
     DynamoDBDeleteResult,
-    GetDocumentsByUserdParams,
+    GetDocumentsByUserParams,
     DocumentStatus,
     UpdateDocumentStatusParams
 } from "../types/dynamoDB-types";
@@ -104,7 +104,7 @@ export async function getDocumentFromDynamoDB({ tableName, userId, documentId }:
     }
 }
 
-export async function getDocumentsByUserFromDynamoDB({ tableName, userId }: GetDocumentsByUserdParams): Promise<DocumentRecord[]> {
+export async function getDocumentsByUserFromDynamoDB({ tableName, userId }: GetDocumentsByUserParams): Promise<DocumentRecord[]> {
     try {
         const command = new QueryCommand({
             TableName: tableName,

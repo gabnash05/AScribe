@@ -10,7 +10,7 @@ import { AscribeAppProps } from '../types/ascribe-app-types';
 import * as dotenv from 'dotenv';
 
 // Load environment variables from .env file
-dotenv.config({ path: '../../.env' });
+dotenv.config({ path: '../.env' });
 
 const app = new App();
 
@@ -59,8 +59,8 @@ const computeStack = new ComputeStack(app, `AScribeComputeStack-${stage}`, {
     extractedTextsTable: databaseStack.extractedTextsTable,
     summariesTable: databaseStack.summariesTable,
     questionsTable: databaseStack.questionsTable,
-    openSearchEndpoint: searchStack.searchDomain.domainEndpoint,
-    bedrockModelID: process.env.BEDROCK_MODEL_ID!, // TODO: set this from config
+    openSearchEndpoint: searchStack.collectionEndpoint,
+    bedrockModelID: process.env.BEDROCK_MODEL_ID!,
 });
 
 // Add the Lambda notification to StorageStack
