@@ -107,7 +107,6 @@ const apiGatewayStack = new APIGatewayStack(app, `AScribeApiGatewayStack-${stage
         deleteQuestionLambda: computeStack.deleteQuestionLambda,
         searchDocumentsLambda: computeStack.searchDocumentsLambda,
         initializeSearchIndexLambda: computeStack.initializeSearchIndexLambda,
-        handleTextractJobCompletionLambda: computeStack.handleTextractJobCompletionLambda,
     },
     textractNotificationTopic: computeStack.textractNotificationTopic,
 });

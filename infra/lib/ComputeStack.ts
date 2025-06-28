@@ -140,8 +140,7 @@
             };
 
             // Document Lambda functions
-            this.processUploadedFileLambda = this.createLambda('upload', 'Documents', lambdaPropsWithBedrockTextractSearch);
-            this.finalizeUploadLambda = this.createLambda('finalizeUpload', 'Documents', lambdaPropsWithBedrockAndSearch);
+            this.processUploadedFileLambda = this.createLambda('processUploadedFile', 'Documents', lambdaPropsWithBedrockTextractSearch);            this.finalizeUploadLambda = this.createLambda('finalizeUpload', 'Documents', lambdaPropsWithBedrockAndSearch);
             this.getDocumentLambda = this.createLambda('getDocument', 'Documents', lambdaProps);
             this.getDocumentsLambda = this.createLambda('getDocuments', 'Documents', lambdaProps);
             this.getDocumentStatusLambda = this.createLambda('getDocumentStatus', 'Documents', lambdaProps);

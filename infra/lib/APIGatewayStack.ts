@@ -32,7 +32,6 @@ interface APIGatewayStackProps extends AscribeAppProps {
         deleteQuestionLambda: IFunction;
         searchDocumentsLambda: IFunction;
         initializeSearchIndexLambda: IFunction;
-        handleTextractJobCompletionLambda: IFunction;
     }
     textractNotificationTopic: Topic;
 }
@@ -83,7 +82,6 @@ export class APIGatewayStack extends Stack {
         });
 
         // Documents 
-        // this.addLambdaRoute('documents', 'POST', uploadLambda, authorizer);
         this.addLambdaRoute('documents', 'GET', getDocumentsLambda, authorizer);
 
         // Search
