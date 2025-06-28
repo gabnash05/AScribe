@@ -45,8 +45,9 @@ export class DatabaseStack extends Stack {
         // - extractedTextId: string (unique ID for the extracted text)
         // - documentId: string (FK to original doc)
         // - processedDate: string
-        // - verified: boolean
         // - textFileKey: string (S3 key of saved .md/.txt)
+        // - verified: boolean
+        // - averageConfidence: number (optional, for confidence score)
         // - summaryId: string (optional)
         // - questionsId: string[] (optional)
         // - tokens: number (optional, for token count)

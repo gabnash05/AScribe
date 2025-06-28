@@ -1,7 +1,7 @@
     import { Duration, Stack, StackProps } from 'aws-cdk-lib';
     import { Bucket } from "aws-cdk-lib/aws-s3";
     import { Table } from "aws-cdk-lib/aws-dynamodb";
-    import { Construct } from 'constructs';
+    import { Construct, Node } from 'constructs';
     import { Runtime } from 'aws-cdk-lib/aws-lambda';
     import { NodejsFunction, NodejsFunctionProps } from 'aws-cdk-lib/aws-lambda-nodejs';
     import { PolicyStatement, Effect, ServicePrincipal, Role } from 'aws-cdk-lib/aws-iam';
@@ -23,9 +23,10 @@
 
     export class ComputeStack extends Stack {
         // Document Handlers
-        public readonly uploadLambda: NodejsFunction;
+        public readonly processUploadedFileLambda: NodejsFunction;
         public readonly finalizeUploadLambda: NodejsFunction;
         public readonly getDocumentLambda: NodejsFunction;
+        public readonly getDocumentStatusLambda: NodejsFunction;
         public readonly getDocumentsLambda: NodejsFunction;
         public readonly updateDocumentLambda: NodejsFunction;
         public readonly deleteDocumentLambda: NodejsFunction;
@@ -139,10 +140,11 @@
             };
 
             // Document Lambda functions
-            this.uploadLambda = this.createLambda('upload', 'Documents', lambdaPropsWithBedrockTextractSearch);
+            this.processUploadedFileLambda = this.createLambda('upload', 'Documents', lambdaPropsWithBedrockTextractSearch);
             this.finalizeUploadLambda = this.createLambda('finalizeUpload', 'Documents', lambdaPropsWithBedrockAndSearch);
             this.getDocumentLambda = this.createLambda('getDocument', 'Documents', lambdaProps);
             this.getDocumentsLambda = this.createLambda('getDocuments', 'Documents', lambdaProps);
+            this.getDocumentStatusLambda = this.createLambda('getDocumentStatus', 'Documents', lambdaProps);
             this.updateDocumentLambda = this.createLambda('updateDocument', 'Documents', lambdaProps);
             this.deleteDocumentLambda = this.createLambda('deleteDocument', 'Documents', lambdaProps);
             this.updateTagsLambda = this.createLambda('updateTags', 'Documents', lambdaPropsWithSearch);
@@ -177,29 +179,30 @@
             // 
 
             // Document Bucket
-            documentBucket.grantReadWrite(this.uploadLambda);
+            documentBucket.grantReadWrite(this.processUploadedFileLambda);
             documentBucket.grantReadWrite(this.finalizeUploadLambda);
             documentBucket.grantRead(this.getDocumentLambda);
             documentBucket.grantRead(this.getDocumentsLambda);
-            documentBucket.grantWrite(this.updateDocumentLambda); // May not be required since metadata is stored in DynamoDB
+            documentBucket.grantWrite(this.updateDocumentLambda);
             documentBucket.grantWrite(this.deleteDocumentLambda);
+            documentBucket.grantReadWrite(this.handleTextractJobCompletionLambda);
 
             // Lambdas that only read S3 references
             documentBucket.grantRead(this.getExtractedTextLambda);
             documentBucket.grantRead(this.getSummaryLambda);
             documentBucket.grantRead(this.getQuestionsLambda);
             documentBucket.grantRead(this.searchDocumentsLambda);
-            documentBucket.grantRead(this.handleTextractJobCompletionLambda);
 
             // 
             // DynamoDB Permissions
             // 
 
             // Documents Table
-            documentsTable.grantReadWriteData(this.uploadLambda);
+            documentsTable.grantReadWriteData(this.processUploadedFileLambda);
             documentsTable.grantReadWriteData(this.finalizeUploadLambda);
             documentsTable.grantReadData(this.getDocumentLambda);
             documentsTable.grantReadData(this.getDocumentsLambda);
+            documentsTable.grantReadData(this.getDocumentStatusLambda);
             documentsTable.grantReadWriteData(this.updateDocumentLambda);
             documentsTable.grantReadWriteData(this.deleteDocumentLambda);
             documentsTable.grantReadWriteData(this.updateTagsLambda);
@@ -243,6 +246,7 @@
                 ]
             });
             this.finalizeUploadLambda.addToRolePolicy(bedrockPolicy);
+            this.handleTextractJobCompletionLambda.addToRolePolicy(bedrockPolicy);
             this.createSummaryLambda.addToRolePolicy(bedrockPolicy);
             this.createQuestionsLambda.addToRolePolicy(bedrockPolicy);
 

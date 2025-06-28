@@ -104,7 +104,7 @@ export class MonitoringStack extends Stack {
 
         new cw.Alarm(this, 'BedrockTokenUsageAlarm', {
             metric: totalTokens,
-            threshold: 500_000, // 500K tokens/hour
+            threshold: 100_000, // 500K tokens/hour
             evaluationPeriods: 1,
             comparisonOperator: cw.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
             treatMissingData: cw.TreatMissingData.NOT_BREACHING,
@@ -125,7 +125,8 @@ export class MonitoringStack extends Stack {
             }),
             threshold: 10,
             evaluationPeriods: 1,
-            alarmDescription: 'Estimated monthly AWS charges exceeded $10.',            alarmName: 'AScribe-Billing-Threshold',
+            alarmDescription: 'Estimated monthly AWS charges exceeded $10.',           
+            alarmName: 'AScribe-Billing-Threshold',
             comparisonOperator: cw.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
             treatMissingData: cw.TreatMissingData.NOT_BREACHING,
         }).addAlarmAction(new actions.SnsAction(alarmTopic));

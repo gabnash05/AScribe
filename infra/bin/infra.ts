@@ -64,7 +64,7 @@ const computeStack = new ComputeStack(app, `AScribeComputeStack-${stage}`, {
 });
 
 // Add the Lambda notification to StorageStack
-storageStack.addUploadLambdaTrigger(computeStack.uploadLambda);
+storageStack.addUploadLambdaTrigger(computeStack.processUploadedFileLambda);
 
 // Update search stack with actual Lambda references
 searchStack.bindLambdas({
@@ -89,6 +89,7 @@ const apiGatewayStack = new APIGatewayStack(app, `AScribeApiGatewayStack-${stage
         finalizeUploadLambda: computeStack.finalizeUploadLambda,
         getDocumentLambda: computeStack.getDocumentLambda,
         getDocumentsLambda: computeStack.getDocumentsLambda,
+        getDocumentStatusLambda: computeStack.getDocumentStatusLambda,
         updateDocumentLambda: computeStack.updateDocumentLambda,
         deleteDocumentLambda: computeStack.deleteDocumentLambda,
         getExtractedTextLambda: computeStack.getExtractedTextLambda,
@@ -113,15 +114,14 @@ const apiGatewayStack = new APIGatewayStack(app, `AScribeApiGatewayStack-${stage
 
 // Monitoring stack (depends on compute and API Gateway)
 const criticalLambdas = [
-    computeStack.uploadLambda,
+    computeStack.processUploadedFileLambda,
+    computeStack.handleTextractJobCompletionLambda,
+    computeStack.getDocumentStatusLambda,
     computeStack.finalizeUploadLambda,
-    // computeStack.handleTextractJobCompletionLambda, add in prod
-    computeStack.getDocumentLambda,
-    computeStack.createSummaryLambda,
-    computeStack.createQuestionsLambda,
 ];
 
 const regularLambdas = [
+    computeStack.getDocumentLambda,
     computeStack.getDocumentsLambda,
     computeStack.updateDocumentLambda,
     computeStack.deleteDocumentLambda,
@@ -129,9 +129,11 @@ const regularLambdas = [
     computeStack.updateExtractedTextLambda,
     computeStack.deleteExtractedTextLambda,
     computeStack.updateTagsLambda,
+    computeStack.createSummaryLambda,
     computeStack.getSummaryLambda,
     computeStack.updateSummaryLambda,
     computeStack.deleteSummaryLambda,
+    computeStack.createQuestionsLambda,
     computeStack.getQuestionsLambda,
     computeStack.getQuestionLambda,
     computeStack.updateQuestionLambda,

@@ -11,6 +11,7 @@ interface APIGatewayStackProps extends AscribeAppProps {
     userPool: UserPool;
     userPoolClient: UserPoolClient;
     lambdas: {
+        getDocumentStatusLambda: IFunction;
         finalizeUploadLambda: IFunction;
         getDocumentLambda: IFunction;
         getDocumentsLambda: IFunction;
@@ -45,6 +46,7 @@ export class APIGatewayStack extends Stack {
         const { userPool, userPoolClient } = props;
 
         const {
+            getDocumentStatusLambda,
             finalizeUploadLambda,
             getDocumentLambda,
             getDocumentsLambda,
@@ -93,6 +95,7 @@ export class APIGatewayStack extends Stack {
         this.addLambdaRoute('documents/{documentId}', 'PUT', updateDocumentLambda, authorizer);
         this.addLambdaRoute('documents/{documentId}', 'DELETE', deleteDocumentLambda, authorizer);
 
+        this.addLambdaRoute('documents/{documentId}/status', 'GET', getDocumentStatusLambda, authorizer);
         this.addLambdaRoute('documents/{documentId}/finalize', 'POST', finalizeUploadLambda, authorizer);
         this.addLambdaRoute('documents/{documentId}/tags', 'PUT', updateTagsLambda, authorizer);
 
@@ -114,8 +117,6 @@ export class APIGatewayStack extends Stack {
         this.addLambdaRoute('documents/{documentId}/questions/{questionId}', 'GET', getQuestionLambda, authorizer);
         this.addLambdaRoute('documents/{documentId}/questions/{questionId}', 'PUT', updateQuestionLambda, authorizer);
         this.addLambdaRoute('documents/{documentId}/questions/{questionId}', 'DELETE', deleteQuestionLambda, authorizer);
-        
-        // Add any additional routes as needed
     }
 
     private addLambdaRoute(path: string, method: string, lambdaFn: IFunction, authorizer: CognitoUserPoolsAuthorizer): void {
