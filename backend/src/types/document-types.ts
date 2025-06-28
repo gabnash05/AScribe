@@ -36,6 +36,20 @@ export interface GetS3ObjectMetadataParams {
     key: string;
 }
 
+export interface PresignedUploadParams {
+    bucket: string;
+    userId: string;
+    originalFileName: string;
+    contentType: string;
+    expiresIn?: number; // Optional, default is 3600 seconds (1 hour)
+}
+
+export interface PresignedGetUrlParams {
+    bucket: string;
+    key: string;
+    expiresIn?: number;
+}
+
 // RESULTS  
 export interface S3UploadResult {
     key: string;
@@ -47,4 +61,13 @@ export interface GetS3ObjectMetadataResult {
     documentId: string;
     contentType: string;
     fileSize: number;
+}
+
+export interface PresignedUploadResult {
+    key: string;
+    url: string;
+}
+
+export interface PresignedGetUrlResult {
+    url: string;
 }

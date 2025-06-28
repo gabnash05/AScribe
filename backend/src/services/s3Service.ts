@@ -16,10 +16,15 @@ import {
     deleteDocumentFromS3Params, 
     S3UploadResult,
     GetS3ObjectMetadataParams,
-    GetS3ObjectMetadataResult
+    GetS3ObjectMetadataResult,
+    PresignedUploadParams,
+    PresignedUploadResult,
+    PresignedGetUrlParams,
+    PresignedGetUrlResult,
 } from '../types/document-types';
 
 import { v4 as uuidv4 } from 'uuid';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const s3Client = new S3Client({ region: process.env.AWS_REGION });
 
@@ -226,5 +231,78 @@ export async function getS3ObjectMetadata({ bucket, key }: GetS3ObjectMetadataPa
         throw new Error(`Unexpected error during document metadata retrieval: ${
             error instanceof Error ? error.message : 'Unknown error'
         }`);
+    }
+}
+
+// 
+// Not Needed
+// 
+export async function generatePresignedUploadUrl({
+    bucket,
+    userId,
+    originalFileName,
+    contentType,
+    expiresIn = 900 // default 15 minutes
+}: PresignedUploadParams): Promise<PresignedUploadResult> {
+    try {
+        if (!userId || !originalFileName || !contentType) {
+            throw new Error('Missing required parameters for presigned URL generation');
+        }
+
+        const sanitizedFileName = originalFileName.replace(/[^\w.-]/g, '_');
+        const key = `temp/${userId}/${uuidv4()}-${sanitizedFileName}`;
+
+        const command = new PutObjectCommand({
+            Bucket: bucket,
+            Key: key,
+            ContentType: contentType,
+            Metadata: {
+                'uploaded-by': userId,
+                'original-filename': originalFileName,
+            },
+        });
+
+        const url = await getSignedUrl(s3Client, command, { expiresIn });
+
+        return {
+            key,
+            url,
+        };
+    } catch (error) {
+        if (error instanceof S3ServiceException) {
+            throw new Error(`Failed to generate presigned URL: ${error.message}`);
+        }
+        throw new Error(
+            `Unexpected error during presigned URL generation: ${
+                error instanceof Error ? error.message : 'Unknown error'
+            }`
+        );
+    }
+}
+
+export async function generatePresignedGetUrl({
+    bucket,
+    key,
+    expiresIn = 900, // default 15 minutes
+}: PresignedGetUrlParams): Promise<PresignedGetUrlResult> {
+    try {
+        if (!bucket || !key) {
+            throw new Error('Bucket and key are required to generate presigned GET URL');
+        }
+
+        const command = new GetObjectCommand({ Bucket: bucket, Key: key });
+
+        const url = await getSignedUrl(s3Client, command, { expiresIn });
+
+        return { url };
+    } catch (error) {
+        if (error instanceof S3ServiceException) {
+            throw new Error(`Failed to generate presigned GET URL: ${error.message}`);
+        }
+        throw new Error(
+            `Unexpected error during presigned GET URL generation: ${
+                error instanceof Error ? error.message : 'Unknown error'
+            }`
+        );
     }
 }

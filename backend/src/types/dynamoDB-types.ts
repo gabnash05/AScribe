@@ -1,3 +1,6 @@
+// ENUMS
+export type DocumentStatus = 'temp' | 'processing' | 'cleaned' | 'verified';
+
 // PARAMS
 export interface SaveDocumentParams {
     tableName: string;
@@ -10,7 +13,7 @@ export interface GetDocumentParams {
     documentId: string;
 }
 
-export interface GetDocumentsByUserdParams {
+export interface GetDocumentsByUserParams {
     tableName: string;
     userId: string;
 }
@@ -20,6 +23,13 @@ export interface UpdateDocumentParams {
     userId: string;
     documentId: string;
     document: UpdateDocumentRecord;
+}
+
+export interface UpdateDocumentStatusParams {
+    tableName: string;
+    userId: string;
+    documentId: string;
+    status: DocumentStatus
 }
 
 export interface DeleteDocumentParams {
@@ -89,16 +99,17 @@ export interface DocumentRecord {
     fileKey: string;
     originalFilename: string;
     uploadDate: string; // ISO date string
-    status: 'temp' | 'verified';
+    status: DocumentStatus;
     tags: string[];
     extractedTextId: string;
+    textractJobId?: string;
 }
 
 export interface UpdateDocumentRecord { // Only fields that can be updated
     fileKey?: string;
     originalFilename?: string;
     uploadDate?: string;
-    status?: 'temp' | 'verified';
+    status?: DocumentStatus;
     tags?: string[];
     extractedTextId?: string;
 }
@@ -163,7 +174,7 @@ export interface DynamoDBSaveResult {
 export interface DynamoDBUpdateResult {
     success: boolean;
     message?: string;
-    item?: UpdateDocumentRecord | UpdateExtractedTextRecord | UpdateSummaryRecord | UpdateQuestionRecord;
+    item?: UpdateDocumentRecord | UpdateExtractedTextRecord | UpdateSummaryRecord | UpdateQuestionRecord | DocumentStatus;
 }
 
 export interface DynamoDBDeleteResult {

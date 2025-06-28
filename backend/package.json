@@ -22,6 +22,7 @@
     "@aws-sdk/client-textract": "^3.830.0",
     "@aws-sdk/node-http-handler": "^3.374.0",
     "@aws-sdk/protocol-http": "^3.374.0",
+    "@aws-sdk/s3-request-presigner": "^3.839.0",
     "@aws-sdk/signature-v4": "^3.374.0",
     "@aws-sdk/util-dynamodb": "^3.830.0",
     "uuid": "^11.1.0",

@@ -29,7 +29,7 @@ export class DatabaseStack extends Stack {
         // - fileKey: string (S3 key)
         // - originalFilename: string
         // - uploadDate: string (ISO)
-        // - status: 'temp' | 'verified'
+        // - status: 'temp' | 'processing' | 'cleaned' | 'verified'
         // - tags: string[]
         // - extractedTextId: string (FK to extractedTextsTable)
 

@@ -27,7 +27,9 @@ import {
     DynamoDBSaveResult,
     DynamoDBUpdateResult,
     DynamoDBDeleteResult,
-    GetDocumentsByUserdParams
+    GetDocumentsByUserdParams,
+    DocumentStatus,
+    UpdateDocumentStatusParams
 } from "../types/dynamoDB-types";
 
 const dynamoDBClient = new DynamoDBClient({ region: process.env.AWS_REGION });
@@ -139,6 +141,36 @@ export async function getDocumentsByUserFromDynamoDB({ tableName, userId }: GetD
     }
 }
 
+export async function getDocumentStatusFromDynamoDB({ tableName, userId, documentId }: GetDocumentParams): Promise<DocumentStatus | null> {
+    try {
+        const command = new GetItemCommand({
+            TableName: tableName,
+            Key: {
+                userId: { S: userId },
+                documentId: { S: documentId }
+            },
+            ProjectionExpression: 'status'
+        });
+
+        const response = await dynamoDBClient.send(command);
+
+        if (!response.Item) {
+            return null; 
+        }
+
+        const status = response.Item.status.S;
+
+        return status as DocumentStatus;
+    } catch (error) {
+        if (error instanceof DynamoDBServiceException) {
+            throw new Error(`Failed to get documents status from DynamoDB: ${error.message}`);
+        }
+        throw new Error(`Unexpected error during document status retrieval: ${
+            error instanceof Error ? error.message : 'Unknown error'
+        }`);
+    }
+}
+
 export async function updateDocumentInDynamoDB({ tableName, userId, documentId, document }: UpdateDocumentParams): Promise<DynamoDBUpdateResult> {
     try {
         const expressionParts: string[] = [];
@@ -197,6 +229,40 @@ export async function updateDocumentInDynamoDB({ tableName, userId, documentId, 
             throw new Error(`Failed to update document in DynamoDB: ${error.message}`);
         }
         throw new Error(`Unexpected error during document update: ${
+            error instanceof Error ? error.message : 'Unknown error'
+        }`);
+    }
+}
+
+export async function updateDocumentStatus({ tableName, userId, documentId, status}: UpdateDocumentStatusParams): Promise<DynamoDBUpdateResult> {
+    try {
+        const command = new UpdateItemCommand({
+            TableName: tableName,
+            Key: {
+                userId: { S: userId },
+                documentId: { S: documentId }
+            },
+            UpdateExpression: 'SET #status = :status',
+            ExpressionAttributeNames: {
+                '#status': 'status'
+            },
+            ExpressionAttributeValues: {
+                ':status': { S: status }
+            }
+        });
+
+        await dynamoDBClient.send(command);
+
+        return {
+            success: true,
+            message: 'Document status updated successfully',
+            item: { status }
+        };
+    } catch (error) {
+        if (error instanceof DynamoDBServiceException) {
+            throw new Error(`Failed to update document status: ${error.message}`);
+        }
+        throw new Error(`Unexpected error during status update: ${
             error instanceof Error ? error.message : 'Unknown error'
         }`);
     }

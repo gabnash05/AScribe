@@ -100,6 +100,11 @@ export class AuthStack extends Stack {
                 resources: [
                     `arn:aws:s3:::${props.documentBucketName}/temp/*`,
                 ],
+                conditions: {
+                    StringLike: {
+                        's3:prefix': ['temp/${cognito-identity.amazonaws.com:sub}/*']
+                    }
+                }
             })
         );
 
