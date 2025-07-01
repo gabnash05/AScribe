@@ -8,9 +8,11 @@ import { APIGatewayStack } from '../lib/APIGatewayStack';
 import { MonitoringStack } from '../lib/MonitoringStack';
 import { AscribeAppProps } from '../types/ascribe-app-types';
 import * as dotenv from 'dotenv';
+import * as path from 'path';
+import { NotificationStack } from '../lib/NotificationStack';
 
 // Load environment variables from .env file
-dotenv.config({ path: '../.env' });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = new App();
 
@@ -62,9 +64,6 @@ const computeStack = new ComputeStack(app, `AScribeComputeStack-${stage}`, {
     openSearchEndpoint: searchStack.collectionEndpoint,
     bedrockModelID: process.env.BEDROCK_MODEL_ID!,
 });
-
-// Add the Lambda notification to StorageStack
-storageStack.addUploadLambdaTrigger(computeStack.processUploadedFileLambda);
 
 // Update search stack with actual Lambda references
 searchStack.bindLambdas({

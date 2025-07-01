@@ -25,6 +25,8 @@ interface ProcessDocumentResult {
     suggestedFilePath?: string;
 }
 
+
 export const handler = async (event: S3Event) => {
-    
-}
+  console.log('Event:', JSON.stringify(event, null, 2));
+  return { statusCode: 200, body: 'Processed' };
+};

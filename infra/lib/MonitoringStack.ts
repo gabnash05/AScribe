@@ -48,29 +48,6 @@ export class MonitoringStack extends Stack {
             }).addAlarmAction(new actions.SnsAction(alarmTopic));
         });
 
-        // Regular Lambdas Alarm (1 Alarm)
-        const regularLambdasErrorMetrics = new cw.MathExpression({
-            expression: `SUM(METRICS())`,
-            usingMetrics: Object.fromEntries(
-                regularLambdas.map(lambda => [
-                    lambda.functionName,
-                    lambda.metricErrors({ period: Duration.minutes(5) })
-                ])
-            ),
-            label: 'TotalNonCriticalLambdaErrors'
-        });
-
-        // Alert if 5+ errors across all non-critical Lambdas
-        new cw.Alarm(this, 'NonCriticalLambdaErrors', {
-            metric: regularLambdasErrorMetrics,
-            threshold: 5,
-            evaluationPeriods: 1,
-            alarmDescription: 'Aggregate error count across non-critical Lambdas exceeded threshold.',
-            alarmName: 'AScribe-NonCriticalLambdas-Errors',
-            treatMissingData: cw.TreatMissingData.IGNORE,
-            comparisonOperator: cw.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
-        }).addAlarmAction(new actions.SnsAction(alarmTopic));
-
         // API Gateway 5XX errors (1 alarm)
         new cw.Alarm(this, 'Api5XXErrors', {
             metric: apiGateway.metricServerError({ period: Duration.minutes(5) }),

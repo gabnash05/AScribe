@@ -31,20 +31,8 @@ export class StorageStack extends Stack {
                     maxAge: 3000,
                     exposedHeaders: ['ETag']
                 }
-            ]
-        });
-    }
-
-    public addUploadLambdaTrigger(uploadLambda: NodejsFunction) {
-        this.documentBucket.addEventNotification(
-            EventType.OBJECT_CREATED,
-            new LambdaDestination(uploadLambda),
-            { prefix: 'temp/' }
-        );
-
-        uploadLambda.addPermission('AllowS3Invoke', {
-            principal: new ServicePrincipal('s3.amazonaws.com'),
-            sourceArn: this.documentBucket.bucketArn,
+            ],
+            eventBridgeEnabled: true,
         });
     }
 }
