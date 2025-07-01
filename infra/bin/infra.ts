@@ -9,7 +9,6 @@ import { MonitoringStack } from '../lib/MonitoringStack';
 import { AscribeAppProps } from '../types/ascribe-app-types';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import { NotificationStack } from '../lib/NotificationStack';
 
 // Load environment variables from .env file
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -61,7 +60,7 @@ const computeStack = new ComputeStack(app, `AScribeComputeStack-${stage}`, {
     extractedTextsTable: databaseStack.extractedTextsTable,
     summariesTable: databaseStack.summariesTable,
     questionsTable: databaseStack.questionsTable,
-    openSearchEndpoint: searchStack.collectionEndpoint,
+    openSearchEndpoint: searchStack.domainEndpoint,
     bedrockModelID: process.env.BEDROCK_MODEL_ID!,
 });
 

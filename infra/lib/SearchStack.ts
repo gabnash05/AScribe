@@ -1,10 +1,10 @@
-import { Stack, CfnOutput, RemovalPolicy } from 'aws-cdk-lib';
-import { CfnSecurityPolicy, CfnAccessPolicy, CfnCollection } from 'aws-cdk-lib/aws-opensearchserverless';
+import { Stack, CfnOutput, RemovalPolicy, Duration } from 'aws-cdk-lib';
+import { Domain, EngineVersion } from 'aws-cdk-lib/aws-opensearchservice';
 import { IFunction } from 'aws-cdk-lib/aws-lambda';
-import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { Effect, PolicyStatement, AnyPrincipal } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
-
 import { AscribeAppProps } from '../types/ascribe-app-types';
+import { EbsDeviceVolumeType } from 'aws-cdk-lib/aws-ec2';
 
 export interface SearchLambdas {
     finalizeUploadLambda: IFunction;
@@ -24,140 +24,75 @@ interface SearchStackProps extends AscribeAppProps {
 }
 
 export class SearchStack extends Stack {
-    public readonly collectionName: string;
-    public readonly collectionEndpoint: string;
-    private collectionArn?: string;
-    private searchLambdas?: SearchLambdas;
+    public readonly domainName: string;
+    public readonly domainEndpoint: string;
 
     constructor(scope: Construct, id: string, props: SearchStackProps) {
         super(scope, id, props);
 
-        this.collectionName = `ascribe-search-${props.stage}`;
+        this.domainName = `ascribe-search-${props.stage}`;
 
-        // 1. Create Encryption Policy
-        const encryptionPolicy = new CfnSecurityPolicy(this, 'EncryptionPolicy', {
-            name: `${this.collectionName}-encryption`,
-            type: 'encryption',
-            policy: JSON.stringify({
-                Rules: [{
-                    Resource: [`collection/${this.collectionName}`],
-                    ResourceType: 'collection'
-                }],
-                AWSOwnedKey: true
-            })
+        // Using t2.small.elasticsearch which is free tier eligible
+        const domain = new Domain(this, 'AScribeSearchDomain', {
+            domainName: this.domainName,
+            version: EngineVersion.OPENSEARCH_2_5,
+            capacity: {
+                dataNodes: 1,
+                dataNodeInstanceType: 't2.micro.search',
+            },
+            ebs: {
+                volumeSize: 10, // Minimum size for free tier
+                volumeType: EbsDeviceVolumeType.GP2,
+            },
+            zoneAwareness: {
+                enabled: false, // Disabled for free tier
+            },
+            removalPolicy: props.stage === 'dev' ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN, // TODO: Change to RETAIN in production
+            enforceHttps: true,
+            nodeToNodeEncryption: true,
+            encryptionAtRest: {
+                enabled: true,
+            },
+            fineGrainedAccessControl: {
+                masterUserName: 'admin',
+            },
+            accessPolicies: [
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    principals: [new AnyPrincipal()],
+                    actions: ['es:*'],
+                    resources: [`arn:aws:es:${this.region}:${this.account}:domain/${this.domainName}/*`],
+                }),
+            ],
         });
 
-        // 2. Create Network Policy
-        const networkPolicy = new CfnSecurityPolicy(this, 'NetworkPolicy', {
-            name: `${this.collectionName}-network`,
-            type: 'network',
-            policy: JSON.stringify([{
-                Rules: [{
-                    Resource: [`collection/${this.collectionName}`],
-                    ResourceType: 'collection'
-                }],
-                AllowFromPublic: true
-            }])
-        });
-
-        // 3. Create Access Policy
-        const accessPolicy = new CfnAccessPolicy(this, 'AccessPolicy', {
-            name: `${this.collectionName}-access`,
-            type: 'data',
-            policy: JSON.stringify([{
-                Rules: [{
-                    Resource: [`index/${this.collectionName}/*`],
-                    ResourceType: 'index',
-                    Permission: [
-                        'aoss:CreateIndex',
-                        'aoss:DeleteIndex',
-                        'aoss:UpdateIndex',
-                        'aoss:DescribeIndex',
-                        'aoss:ReadDocument',
-                        'aoss:WriteDocument'
-                    ]
-                }],
-                Principal: [
-                    `arn:aws:iam::${this.account}:root`
-                ]
-            }])
-        });
-
-        // 4. Create Collection
-        const collection = new CfnCollection(this, 'AScribeSearchCollection', {
-            name: this.collectionName,
-            type: 'SEARCH',
-            description: 'AScribe document search collection',
-        });
-
-        collection.applyRemovalPolicy(RemovalPolicy.DESTROY); // TODO: Change to RETAIN in production
-        this.collectionArn = collection.attrArn;
-
-        // Add dependencies
-        collection.addDependency(encryptionPolicy);
-        collection.addDependency(networkPolicy);
-        collection.addDependency(accessPolicy);
-
-        this.collectionEndpoint = `https://${collection.attrId}.${this.region}.aoss.amazonaws.com`;
+        this.domainEndpoint = domain.domainEndpoint;
 
         new CfnOutput(this, 'OpenSearchEndpoint', {
-            value: this.collectionEndpoint,
+            value: this.domainEndpoint,
             exportName: 'OpenSearchEndpoint',
         });
+
+        // Bind Lambdas if provided
+        if (props.searchLambdas) {
+            this.bindLambdas(props.searchLambdas);
+        }
     }
 
     public bindLambdas(lambdas: SearchLambdas): void {
-        if (!this.collectionArn) {
-            throw new Error('Collection ARN is not available. Make sure the collection is initialized before binding lambdas.');
-        }
-
-        this.searchLambdas = lambdas;
-
-        const documentResource = `${this.collectionArn}/index/content/_doc/*`;
-        const searchResource = `${this.collectionArn}/index/content/_search`;
-        const initializeIndex = `${this.collectionArn}/index/content/*`;
+        const domainArn = `arn:aws:es:${this.region}:${this.account}:domain/${this.domainName}`;
 
         // Base policy for all Lambdas
         const basePolicy = new PolicyStatement({
             effect: Effect.ALLOW,
-            actions: ['aoss:APIAccessAll'],
-            resources: [this.collectionArn!]
-        });
-
-        // Specific operation policies
-        const allowPostPut = new PolicyStatement({
-            effect: Effect.ALLOW,
             actions: [
-                'aoss:CreateIndex',
-                'aoss:UpdateIndex',
-                'aoss:WriteDocument'
+                'es:ESHttpDelete',
+                'es:ESHttpGet',
+                'es:ESHttpHead',
+                'es:ESHttpPost',
+                'es:ESHttpPut',
             ],
-            resources: [documentResource],
-        });
-
-        const allowGetSearch = new PolicyStatement({
-            effect: Effect.ALLOW,
-            actions: [
-                'aoss:ReadDocument',
-                'aoss:DescribeIndex'
-            ],
-            resources: [searchResource],
-        });
-
-        const allowDelete = new PolicyStatement({
-            effect: Effect.ALLOW,
-            actions: ['aoss:DeleteIndex'],
-            resources: [documentResource],
-        });
-
-        const allowInitialize = new PolicyStatement({
-            effect: Effect.ALLOW,
-            actions: [
-                'aoss:CreateIndex',
-                'aoss:UpdateIndex',
-                'aoss:DescribeIndex'
-            ],
-            resources: [initializeIndex],
+            resources: [`${domainArn}/*`],
         });
 
         // Apply policies to all Lambdas
@@ -165,16 +100,28 @@ export class SearchStack extends Stack {
             lambda.addToRolePolicy(basePolicy);
         });
 
+        // Additional permissions for specific operations
+        const indexManagementPolicy = new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: [
+                'es:CreateIndex',
+                'es:DeleteIndex',
+                'es:UpdateIndex',
+                'es:DescribeIndex',
+            ],
+            resources: [`${domainArn}/*`],
+        });
+
         // Apply specific policies
-        lambdas.finalizeUploadLambda.addToRolePolicy(allowPostPut);
-        lambdas.updateExtractedTextLambda.addToRolePolicy(allowPostPut);
-        lambdas.updateTagsLambda.addToRolePolicy(allowPostPut);
-        lambdas.updateSummaryLambda.addToRolePolicy(allowPostPut);
-        lambdas.updateQuestionLambda.addToRolePolicy(allowPostPut);
-        lambdas.searchLambda.addToRolePolicy(allowGetSearch);
-        lambdas.initializeSearchIndexLambda.addToRolePolicy(allowInitialize);
-        lambdas.deleteExtractedTextLambda.addToRolePolicy(allowDelete);
-        lambdas.deleteSummaryLambda.addToRolePolicy(allowDelete);
-        lambdas.deleteQuestionLambda.addToRolePolicy(allowDelete);
+        lambdas.finalizeUploadLambda.addToRolePolicy(indexManagementPolicy);
+        lambdas.searchLambda.addToRolePolicy(indexManagementPolicy);
+        lambdas.updateExtractedTextLambda.addToRolePolicy(indexManagementPolicy);
+        lambdas.updateTagsLambda.addToRolePolicy(indexManagementPolicy);
+        lambdas.updateSummaryLambda.addToRolePolicy(indexManagementPolicy);
+        lambdas.updateQuestionLambda.addToRolePolicy(indexManagementPolicy);
+        lambdas.deleteExtractedTextLambda.addToRolePolicy(indexManagementPolicy);
+        lambdas.deleteSummaryLambda.addToRolePolicy(indexManagementPolicy);
+        lambdas.deleteQuestionLambda.addToRolePolicy(indexManagementPolicy);
+        lambdas.initializeSearchIndexLambda.addToRolePolicy(indexManagementPolicy);
     }
 }
