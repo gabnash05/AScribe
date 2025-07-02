@@ -47,10 +47,10 @@ const authStack = new AuthStack(app, `AScribeAuthStack-${stage}`, {
     documentBucketName: storageStack.documentBucketName, 
 });
 
-// Search stack (depends on nothing)
-const searchStack = new SearchStack(app, `AScribeSearchStack-${stage}`, {
-    ...commonProps,
-});
+// // Search stack (depends on nothing)
+// const searchStack = new SearchStack(app, `AScribeSearchStack-${stage}`, {
+//     ...commonProps,
+// });
 
 // Compute stack (depends on database, storage, and search)
 const computeStack = new ComputeStack(app, `AScribeComputeStack-${stage}`, {
@@ -60,23 +60,23 @@ const computeStack = new ComputeStack(app, `AScribeComputeStack-${stage}`, {
     extractedTextsTable: databaseStack.extractedTextsTable,
     summariesTable: databaseStack.summariesTable,
     questionsTable: databaseStack.questionsTable,
-    openSearchEndpoint: searchStack.domainEndpoint,
+    openSearchEndpoint: 'https://',
     bedrockModelID: process.env.BEDROCK_MODEL_ID!,
 });
 
-// Update search stack with actual Lambda references
-searchStack.bindLambdas({
-    finalizeUploadLambda: computeStack.finalizeUploadLambda,
-    searchLambda: computeStack.searchDocumentsLambda,
-    updateExtractedTextLambda: computeStack.updateExtractedTextLambda,
-    updateTagsLambda: computeStack.updateTagsLambda,
-    deleteExtractedTextLambda: computeStack.deleteExtractedTextLambda,
-    updateSummaryLambda: computeStack.updateSummaryLambda,
-    deleteSummaryLambda: computeStack.deleteSummaryLambda,
-    updateQuestionLambda: computeStack.updateQuestionLambda,
-    deleteQuestionLambda: computeStack.deleteQuestionLambda,
-    initializeSearchIndexLambda: computeStack.initializeSearchIndexLambda,
-});
+// // Update search stack with actual Lambda references
+// searchStack.bindLambdas({
+//     finalizeUploadLambda: computeStack.finalizeUploadLambda,
+//     searchLambda: computeStack.searchDocumentsLambda,
+//     updateExtractedTextLambda: computeStack.updateExtractedTextLambda,
+//     updateTagsLambda: computeStack.updateTagsLambda,
+//     deleteExtractedTextLambda: computeStack.deleteExtractedTextLambda,
+//     updateSummaryLambda: computeStack.updateSummaryLambda,
+//     deleteSummaryLambda: computeStack.deleteSummaryLambda,
+//     updateQuestionLambda: computeStack.updateQuestionLambda,
+//     deleteQuestionLambda: computeStack.deleteQuestionLambda,
+//     initializeSearchIndexLambda: computeStack.initializeSearchIndexLambda,
+// });
 
 // API Gateway stack (depends on compute and auth)
 const apiGatewayStack = new APIGatewayStack(app, `AScribeApiGatewayStack-${stage}`, {

@@ -32,29 +32,26 @@ export class SearchStack extends Stack {
 
         this.domainName = `ascribe-search-${props.stage}`;
 
-        // Using t2.small.elasticsearch which is free tier eligible
-        const domain = new Domain(this, 'AScribeSearchDomain', {
+        const domain = new Domain(this, 'AscribeSearchDomain', {
             domainName: this.domainName,
             version: EngineVersion.OPENSEARCH_2_5,
+            removalPolicy: props.stage === 'dev'? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN, // TODO: DESTROY for dev, RETAIN for prod
             capacity: {
                 dataNodes: 1,
-                dataNodeInstanceType: 't2.micro.search',
+                dataNodeInstanceType: 't3.small.search',
+                multiAzWithStandbyEnabled: false,
             },
             ebs: {
-                volumeSize: 10, // Minimum size for free tier
+                volumeSize: 10,
                 volumeType: EbsDeviceVolumeType.GP2,
             },
             zoneAwareness: {
-                enabled: false, // Disabled for free tier
+                enabled: false,
             },
-            removalPolicy: props.stage === 'dev' ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN, // TODO: Change to RETAIN in production
             enforceHttps: true,
             nodeToNodeEncryption: true,
             encryptionAtRest: {
                 enabled: true,
-            },
-            fineGrainedAccessControl: {
-                masterUserName: 'admin',
             },
             accessPolicies: [
                 new PolicyStatement({
@@ -114,7 +111,6 @@ export class SearchStack extends Stack {
 
         // Apply specific policies
         lambdas.finalizeUploadLambda.addToRolePolicy(indexManagementPolicy);
-        lambdas.searchLambda.addToRolePolicy(indexManagementPolicy);
         lambdas.updateExtractedTextLambda.addToRolePolicy(indexManagementPolicy);
         lambdas.updateTagsLambda.addToRolePolicy(indexManagementPolicy);
         lambdas.updateSummaryLambda.addToRolePolicy(indexManagementPolicy);
