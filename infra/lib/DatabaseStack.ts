@@ -1,5 +1,5 @@
 import { Stack, StackProps, RemovalPolicy } from 'aws-cdk-lib';
-import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
+import { AttributeType, BillingMode, ProjectionType, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 
 import { AscribeAppProps } from '../types/ascribe-app-types';
@@ -23,15 +23,28 @@ export class DatabaseStack extends Stack {
             billingMode: BillingMode.PAY_PER_REQUEST,
         });
 
+        // Add GSI for fetching all file paths by user
+        this.documentsTable.addGlobalSecondaryIndex({
+            indexName: 'userId-index',
+            partitionKey: { name: 'userId', type: AttributeType.STRING },
+            projectionType: ProjectionType.INCLUDE,
+            nonKeyAttributes: ['filePath']
+        });
+
         // Attributes (stored in the item as needed)
-        // - userId: string
-        // - documentId: string (unique ID for the document)
-        // - fileKey: string (S3 key)
-        // - originalFilename: string
-        // - uploadDate: string (ISO)
-        // - status: 'temp' | 'processing' | 'cleaned' | 'verified'
-        // - tags: string[]
-        // - extractedTextId: string (FK to extractedTextsTable)
+        // userId: string;
+        // documentId: string;
+        // fileKey: string;
+        // filePath: string; // for Frontend use
+        // originalFilename: string;
+        // uploadDate: string; // ISO date string
+        // contentType: string; // MIME type of the file
+        // fileSize: number; // Size of the file in bytes
+        // textExtractionMethod: 'sync' | 'async'; // Method used for text extraction
+        // status: DocumentStatus;
+        // tags: string[];
+        // extractedTextId: string;
+        // textractJobId?: string;
 
         this.extractedTextsTable = new Table(this, 'ExtractedTextsTable', {
             tableName: `AScribeExtractedTexts-${props.stage}`,
@@ -49,7 +62,7 @@ export class DatabaseStack extends Stack {
         // - verified: boolean
         // - averageConfidence: number (optional, for confidence score)
         // - summaryId: string (optional)
-        // - questionsId: string[] (optional)
+        // - questionsId: string[] (optional)f
         // - tokens: number (optional, for token count)
 
         this.summariesTable = new Table (this, 'SummariesTable', {

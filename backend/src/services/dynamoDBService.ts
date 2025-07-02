@@ -31,24 +31,34 @@ import {
     DocumentStatus,
     UpdateDocumentStatusParams
 } from "../types/dynamoDB-types";
+import { text } from "stream/consumers";
 
 const dynamoDBClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 
 // ---------- DOCUMENTS ----------
 export async function saveDocumentToDynamoDB({ tableName, document }: SaveDocumentParams): Promise<DynamoDBSaveResult> {
     try {
+        const item: Record<string, AttributeValue> = {
+            userId: { S: document.userId },
+            documentId: { S: document.documentId },
+            fileKey: { S: document.fileKey },
+            filePath: { S: document.filePath },
+            originalFilename: { S: document.originalFilename },
+            uploadDate: { S: document.uploadDate },
+            contentType: { S: document.contentType },
+            fileSize: { N: document.fileSize.toString() },
+            textExtractionMethod: { S: document.textExtractionMethod },
+            status: { S: document.status },
+            tags: { SS: document.tags },
+            extractedTextId: { S: document.extractedTextId }
+        };
+        if (document.textractJobId) {
+            item.textractJobId = { S: document.textractJobId };
+        }
+
         const command = new PutItemCommand({
             TableName: tableName,
-            Item: {
-                userId: { S: document.userId },
-                documentId: { S: document.documentId },
-                fileKey: { S: document.fileKey },
-                originalFilename: { S: document.originalFilename },
-                uploadDate: { S: document.uploadDate },
-                status: { S: document.status },
-                tags: { SS: document.tags },
-                extractedTextId: { S: document.extractedTextId },
-            }
+            Item: item
         });
 
         await dynamoDBClient.send(command)
@@ -58,6 +68,7 @@ export async function saveDocumentToDynamoDB({ tableName, document }: SaveDocume
             message: 'Document saved successfully',
             item: document,
         };
+
     } catch (error) {
         if (error instanceof DynamoDBServiceException) {
             throw new Error(`Failed to save document to DynamoDB: ${error.message}`);
@@ -88,11 +99,16 @@ export async function getDocumentFromDynamoDB({ tableName, userId, documentId }:
             userId: response.Item.userId.S!,
             documentId: response.Item.documentId.S!,
             fileKey: response.Item.fileKey.S!,
+            filePath: response.Item.filePath.S!,
             originalFilename: response.Item.originalFilename.S!,
             uploadDate: response.Item.uploadDate.S!,
+            contentType: response.Item.contentType.S!,
+            fileSize: parseInt(response.Item.fileSize.N!, 10),
+            textExtractionMethod: response.Item.textExtractionMethod.S! as 'sync' | 'async',
             status: response.Item.status.S! as 'temp' | 'verified',
             tags: response.Item.tags.SS || [],
-            extractedTextId: response.Item.extractedTextId?.S!
+            extractedTextId: response.Item.extractedTextId?.S!,
+            textractJobId: response.Item.textractJobId?.S || undefined
         };
     } catch (error) {
         if (error instanceof DynamoDBServiceException) {
@@ -124,11 +140,16 @@ export async function getDocumentsByUserFromDynamoDB({ tableName, userId }: GetD
             userId: item.userId.S!,
             documentId: item.documentId.S!,
             fileKey: item.fileKey.S!,
+            filePath: item.filePath.S!,
             originalFilename: item.originalFilename.S!,
             uploadDate: item.uploadDate.S!,
+            contentType: item.contentType.S!,
+            fileSize: parseInt(item.fileSize.N!, 10),
+            textExtractionMethod: item.textExtractionMethod.S! as 'sync' | 'async',
             status: item.status.S! as 'temp' | 'verified',
             tags: item.tags?.SS || [],
-            extractedTextId: item.extractedTextId?.S!
+            extractedTextId: item.extractedTextId?.S!,
+            textractJobId: item.textractJobId?.S || undefined
         }));
 
     } catch (error) {
@@ -171,6 +192,36 @@ export async function getDocumentStatusFromDynamoDB({ tableName, userId, documen
     }
 }
 
+export async function getDocumentFilePathFromDynamoDB({ tableName, userId }: {tableName: string, userId: string}): Promise<string[]> {
+    try {
+        const command = new QueryCommand({
+            TableName: tableName,
+            IndexName: 'userId-index',
+            KeyConditionExpression: 'userId = :uid',
+            ExpressionAttributeValues: {
+                ':uid': { S: userId },
+            },
+            ProjectionExpression: 'filePath'
+        })
+
+        const response = await dynamoDBClient.send(command);
+
+        if (!response.Items || response.Items.length === 0) return [];
+
+        return response.Items
+            .map(item => item.filePath?.S)
+            .filter((path): path is string => !!path);
+
+    } catch (error) {
+        if (error instanceof DynamoDBServiceException) {
+            throw new Error(`Failed to get document file path from DynamoDB: ${error.message}`);
+        }
+        throw new Error(`Unexpected error during document file path retrieval: ${
+            error instanceof Error ? error.message : 'Unknown error'
+        }`);
+    }
+}
+
 export async function updateDocumentInDynamoDB({ tableName, userId, documentId, document }: UpdateDocumentParams): Promise<DynamoDBUpdateResult> {
     try {
         const expressionParts: string[] = [];
@@ -179,8 +230,12 @@ export async function updateDocumentInDynamoDB({ tableName, userId, documentId, 
 
         const keyMap: { [key: string]: string } = {
             fileKey: 'fileKey',
+            filePath: 'filePath',
             originalFilename: 'originalFilename',
             uploadDate: 'uploadDate',
+            contentType: 'contentType',
+            fileSize: 'fileSize',
+            textExtractionMethod: 'textExtractionMethod',
             status: 'status',
             tags: 'tags',
             extractedTextId: 'extractedTextId'
@@ -300,10 +355,11 @@ export async function saveExtractedTextToDynamoDB({ tableName, extractedTextReco
         const item: Record<string, AttributeValue> = {
             extractedTextId: { S: extractedTextRecord.extractedTextId },
             documentId: { S: extractedTextRecord.documentId },
+            userId: { S: extractedTextRecord.userId },
             processedDate: { S: extractedTextRecord.processedDate },
             verified: { BOOL: extractedTextRecord.verified },
             textFileKey: { S: extractedTextRecord.textFileKey },
-        };
+            averageConfidence: { N: extractedTextRecord.averageConfidence.toString() },        };
 
         if (extractedTextRecord.summaryId) {
             item.summaryId = { S: extractedTextRecord.summaryId };
@@ -345,6 +401,12 @@ export async function updateExtractedTextInDynamoDB({ tableName, extractedTextId
         const attributeValues: Record<string, AttributeValue> = {};
         const attributeNames: Record<string, string> = {};
 
+        if (extractedTextRecord.documentId !== undefined) {
+            expressionParts.push('#documentId = :documentId');
+            attributeNames['#documentId'] = 'documentId';
+            attributeValues[':documentId'] = { S: extractedTextRecord.documentId };
+        }
+
         if (extractedTextRecord.verified !== undefined) {
             expressionParts.push('#verified = :verified');
             attributeNames['#verified'] = 'verified';
@@ -361,6 +423,12 @@ export async function updateExtractedTextInDynamoDB({ tableName, extractedTextId
             expressionParts.push('#textFileKey = :textFileKey');
             attributeNames['#textFileKey'] = 'textFileKey';
             attributeValues[':textFileKey'] = { S: extractedTextRecord.textFileKey };
+        }
+
+        if (extractedTextRecord.averageConfidence !== undefined) {
+            expressionParts.push('#averageConfidence = :averageConfidence');
+            attributeNames['#averageConfidence'] = 'averageConfidence';
+            attributeValues[':averageConfidence'] = { N: extractedTextRecord.averageConfidence.toString() };
         }
 
         if (extractedTextRecord.summaryId !== undefined) {

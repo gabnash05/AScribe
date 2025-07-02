@@ -97,8 +97,12 @@ export interface DocumentRecord {
     userId: string;
     documentId: string;
     fileKey: string;
+    filePath: string; // For FE
     originalFilename: string;
     uploadDate: string; // ISO date string
+    contentType: string; // MIME type of the file
+    fileSize: number; // Size of the file in bytes
+    textExtractionMethod: 'sync' | 'async'; // Method used for text extraction
     status: DocumentStatus;
     tags: string[];
     extractedTextId: string;
@@ -107,8 +111,12 @@ export interface DocumentRecord {
 
 export interface UpdateDocumentRecord { // Only fields that can be updated
     fileKey?: string;
+    filePath?: string;
     originalFilename?: string;
     uploadDate?: string;
+    contentType?: string;
+    fileSize?: number;
+    textExtractionMethod?: 'sync' | 'async';
     status?: DocumentStatus;
     tags?: string[];
     extractedTextId?: string;
@@ -117,18 +125,22 @@ export interface UpdateDocumentRecord { // Only fields that can be updated
 export interface ExtractedTextRecord {
     extractedTextId: string; // Unique ID for the extracted text
     documentId: string; // Foreign key to original document
+    userId: string;
     processedDate: string; // ISO date string
     verified: boolean;
     textFileKey: string; // S3 key of saved .md/.txt file
+    averageConfidence: number; // Optional confidence score
     summaryId?: string; // Optional foreign key to summary
     questionsId?: string[]; // Optional foreign keys to questions
     tokens?: number; // Optional token count
 }
 
 export interface UpdateExtractedTextRecord {
+    documentId?: string;
     processedDate?: string; // ISO date string
     verified?: boolean;
     textFileKey?: string; // S3 key of saved .md/.txt file
+    averageConfidence?: number;
     summaryId?: string; // Optional foreign key to summary
     questionsId?: string[]; // Optional foreign keys to questions
     tokens?: number; // Optional token count
