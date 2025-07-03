@@ -26,7 +26,6 @@ interface ProcessDocumentResult {
     suggestedFilePath?: string;
 }
 
-
 export const handler = async (event: S3Event) => {
     try {
         console.info('Received event:', JSON.stringify(event, null, 2));
@@ -180,9 +179,32 @@ export const handler = async (event: S3Event) => {
 
     } catch (error) {
         console.error('Failed to process uploaded file:', error);
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ error: 'Internal Server Error' })
-        };
+
+        // Attempt to mark the document as 'failed'
+        try {
+            const record = event.Records?.[0];
+            const key = decodeURIComponent(record?.s3?.object?.key.replace(/\+/g, ' ') || '');
+            const bucket = record?.s3?.bucket?.name;
+
+            if (key && bucket) {
+                const metadata = await s3Service.getS3ObjectMetadata({ bucket, key });
+                const { userId, documentId } = metadata;
+
+                if (userId && documentId) {
+                    await dynamoDBService.updateDocumentStatus({
+                        tableName: DOCUMENTS_TABLE_NAME,
+                        userId,
+                        documentId,
+                        status: 'failed'
+                    });
+
+                    console.info('Marked document as failed in DynamoDB:', { userId, documentId });
+                }
+            }
+        } catch (metadataError) {
+            console.error('Failed to update document status to failed:', metadataError);
+        }
+
+        throw error;
     }
 };

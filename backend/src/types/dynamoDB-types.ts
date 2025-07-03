@@ -1,5 +1,5 @@
 // ENUMS
-export type DocumentStatus = 'temp' | 'processing' | 'cleaned' | 'verified';
+export type DocumentStatus = 'temp' | 'processing' | 'cleaned' | 'verified' | 'failed';
 
 // PARAMS
 export interface SaveDocumentParams {

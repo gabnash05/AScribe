@@ -35,7 +35,7 @@ export class DatabaseStack extends Stack {
         // userId: string;
         // documentId: string;
         // fileKey: string;
-        // filePath: string; // for Frontend use
+        // filePath: string; // for FE
         // originalFilename: string;
         // uploadDate: string; // ISO date string
         // contentType: string; // MIME type of the file
