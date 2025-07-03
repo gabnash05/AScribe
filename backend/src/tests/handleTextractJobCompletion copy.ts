@@ -52,21 +52,19 @@ export const handler = async (event: SNSEvent): Promise<void> => {
         }
 
         // Process the extracted text with Bedrock
-        // const currentFilePaths = await dynamoDBService.getDocumentFilePathFromDynamoDB({
-        //     tableName: DOCUMENTS_TABLE_NAME,
-        //     userId,
-        // }); 
+        const currentFilePaths = await dynamoDBService.getDocumentFilePathFromDynamoDB({
+            tableName: DOCUMENTS_TABLE_NAME,
+            userId,
+        }); 
 
-        // const cleaned = await bedrockService.cleanExtractedTextWithBedrock({
-        //     modelId: BEDROCK_MODEL_ID,
-        //     extractedText,
-        //     averageConfidence: confidence,
-        //     currentFilePaths,
-        // });
+        const cleaned = await bedrockService.cleanExtractedTextWithBedrock({
+            modelId: BEDROCK_MODEL_ID,
+            extractedText,
+            averageConfidence: confidence,
+            currentFilePaths,
+        });
 
-        const cleanedText = extractedText;
-        const tags = ['science', 'geology', 'sedimentary rock']
-        const suggestedFilePath = '/science/geology/'; 
+        const { cleanedText, tags, suggestedFilePath } = cleaned
 
         // Upload extracted text to S3
         const extractedTextResult = await s3Service.uploadExtractedText({

@@ -1,4 +1,4 @@
-import { EventBridgeEvent } from 'aws-lambda';
+import { S3Event } from 'aws-lambda';
 import { getCurrentTimestamp } from '../../utils/timeUtils';
 import * as s3Service from '../../services/s3Service';
 import * as textractService from '../../services/textractService';
@@ -26,20 +26,14 @@ interface ProcessDocumentResult {
     suggestedFilePath?: string;
 }
 
-
-type S3ObjectCreatedDetail = {
-    bucket: { name: string };
-    object: { key: string };
-};
-
-export const handler = async (event: EventBridgeEvent<'Object Created', S3ObjectCreatedDetail>) => {
+export const handler = async (event: S3Event) => {
     try {
         console.info('Received event:', JSON.stringify(event, null, 2));
 
-        const bucket = event.detail.bucket.name;
-        const key = decodeURIComponent(event.detail.object.key.replace(/\+/g, ' '));
-
-        console.info('Triggered by EventBridge:', { bucket, key });
+        // Parse S3 Event
+        const record = event.Records[0];
+        const bucket = record.s3.bucket.name;
+        const key = decodeURIComponent(record.s3.object.key.replace(/\+/g, ' '));
 
         // Get Metadata
         const metadata = await s3Service.getS3ObjectMetadata({ bucket, key });
@@ -115,19 +109,14 @@ export const handler = async (event: EventBridgeEvent<'Object Created', S3Object
             userId,
         }); 
 
-        // const cleaned = await bedrockService.cleanExtractedTextWithBedrock({
-        //     modelId: BEDROCK_MODEL_ID,
-        //     extractedText,
-        //     averageConfidence,
-        //     currentFilePaths,
-        // });
+        const cleaned = await bedrockService.cleanExtractedTextWithBedrock({
+            modelId: BEDROCK_MODEL_ID,
+            extractedText,
+            averageConfidence,
+            currentFilePaths,
+        });
         
-        // const { cleanedText, tags, suggestedFilePath } = cleaned;
-
-        // For Testing
-        const cleanedText = extractedText;
-        const tags = ['science', 'geology', 'sedimentary rock']
-        const suggestedFilePath = '/science/geology/';
+        const { cleanedText, tags, suggestedFilePath } = cleaned;
 
         // Store Cleaned Text in S3
         const cleanedTextResult = await s3Service.uploadExtractedText({
@@ -193,10 +182,11 @@ export const handler = async (event: EventBridgeEvent<'Object Created', S3Object
 
         // Attempt to mark the document as 'failed'
         try {
-            const bucket = event.detail.bucket.name;
-            const key = decodeURIComponent(event.detail.object.key.replace(/\+/g, ' '));
+            const record = event.Records?.[0];
+            const key = decodeURIComponent(record?.s3?.object?.key.replace(/\+/g, ' ') || '');
+            const bucket = record?.s3?.bucket?.name;
 
-            if (bucket && key) {
+            if (key && bucket) {
                 const metadata = await s3Service.getS3ObjectMetadata({ bucket, key });
                 const { userId, documentId } = metadata;
 

@@ -215,6 +215,7 @@ export class ComputeStack extends Stack {
         documentsTable.grantReadData(this.createQuestionsLambda);
 
         // ExtractedTexts Table
+        extractedTextsTable.grantWriteData(this.processUploadedFileLambda);
         extractedTextsTable.grantWriteData(this.finalizeUploadLambda);
         extractedTextsTable.grantReadData(this.getExtractedTextLambda);
         extractedTextsTable.grantReadWriteData(this.updateExtractedTextLambda);
@@ -301,6 +302,14 @@ export class ComputeStack extends Stack {
         this.handleTextractJobCompletionLambda.addToRolePolicy(
             new PolicyStatement({
                 actions: ['textract:GetDocumentTextDetection'],
+                resources: ['*'], // TODO: Restrict to specific resources in production
+            })
+        );
+
+        // Synchronous Textract
+        this.processUploadedFileLambda.addToRolePolicy(
+            new PolicyStatement({
+                actions: ['textract:DetectDocumentText'],
                 resources: ['*'], // TODO: Restrict to specific resources in production
             })
         );
