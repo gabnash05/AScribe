@@ -39,6 +39,10 @@ export class SearchStack extends Stack {
             capacity: {
                 dataNodes: 1,
                 dataNodeInstanceType: 't3.small.search',
+                // Turn off MultiAZ with Standby in t2 and t3
+                //
+                // fix found at:
+                // https://github.com/aws/aws-cdk/issues/29346
                 multiAzWithStandbyEnabled: false,
             },
             ebs: {

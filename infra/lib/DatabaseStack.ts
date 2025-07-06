@@ -31,6 +31,13 @@ export class DatabaseStack extends Stack {
             nonKeyAttributes: ['filePath']
         });
 
+        // Add GSI for Textract jobId lookup
+        this.documentsTable.addGlobalSecondaryIndex({
+            indexName: 'textractJob-index',
+            partitionKey: { name: 'textractJobId', type: AttributeType.STRING },
+            projectionType: ProjectionType.ALL,
+        });
+
         // Attributes (stored in the item as needed)
         // userId: string;
         // documentId: string;

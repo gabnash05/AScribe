@@ -18,6 +18,11 @@ export interface GetDocumentsByUserParams {
     userId: string;
 }
 
+export interface GetDocumentsByJobIdParams {
+    tableName: string;
+    jobId: string;
+}
+
 export interface UpdateDocumentParams {
     tableName: string;
     userId: string;

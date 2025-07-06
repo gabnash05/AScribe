@@ -299,6 +299,12 @@ export class ComputeStack extends Stack {
             resources: [this.textractNotificationTopic.topicArn],
         }));
 
+        this.textractServiceRole.addToPolicy(new PolicyStatement({
+            actions: ['s3:GetObject'],
+            resources: [`${documentBucket.bucketArn}/*`],
+        }));
+
+        // More Textract Permissions
         this.handleTextractJobCompletionLambda.addToRolePolicy(
             new PolicyStatement({
                 actions: ['textract:GetDocumentTextDetection'],
@@ -306,10 +312,12 @@ export class ComputeStack extends Stack {
             })
         );
 
-        // Synchronous Textract
         this.processUploadedFileLambda.addToRolePolicy(
             new PolicyStatement({
-                actions: ['textract:DetectDocumentText'],
+                actions: [
+                    'textract:DetectDocumentText',
+                    "textract:StartDocumentTextDetection",
+                ],
                 resources: ['*'], // TODO: Restrict to specific resources in production
             })
         );

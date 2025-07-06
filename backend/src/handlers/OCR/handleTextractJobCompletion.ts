@@ -28,28 +28,17 @@ export const handler = async (event: SNSEvent): Promise<void> => {
         const extractedText = textractResult.text;
         const confidence = textractResult.confidence;
 
-        // Extract job metadata from the job tag
-        const jobTag = message.JobTag;
-        if (!jobTag) {
-            throw new Error('JobTag is missing from Textract completion message');
-        }
-        
-        const parts = jobTag.split('||');
-        if (parts.length !== 3 || parts[0] !== 'document') {
-            throw new Error('Invalid JobTag format - expected document||userId||documentId');
-        }
-        const [, userId, documentId] = parts;
-
-        // Get the original document metadata from DynamoDB
-        const document = await dynamoDBService.getDocumentFromDynamoDB({
+        // Extract job metadata from the jobId
+        const document = await dynamoDBService.getDocumentByJobIdInDynamoDB({
             tableName: DOCUMENTS_TABLE_NAME,
-            userId,
-            documentId
+            jobId
         });
 
         if (!document) {
-            throw new Error(`Document not found for userId: ${userId}, documentId: ${documentId}`);
+            throw new Error(`Document not found for jobId: ${jobId}`);
         }
+
+        const { userId, documentId } = document;
 
         // Process the extracted text with Bedrock
         // const currentFilePaths = await dynamoDBService.getDocumentFilePathFromDynamoDB({
@@ -127,9 +116,15 @@ export const handler = async (event: SNSEvent): Promise<void> => {
         if (event.Records[0]?.Sns?.Message) {
             try {
                 const message = JSON.parse(event.Records[0].Sns.Message);
-                const jobTag = message.JobTag;
-                if (jobTag) {
-                    const [_, userId, documentId] = jobTag.split('||');
+                const jobId = message.JobId;
+                if (jobId) {
+                    const document = await dynamoDBService.getDocumentByJobIdInDynamoDB({
+                        tableName: DOCUMENTS_TABLE_NAME,
+                        jobId: message.JobId
+                    });
+
+                    const { userId, documentId } = document!;
+                            
                     if (userId && documentId) {
                         await dynamoDBService.updateDocumentStatus({
                             tableName: DOCUMENTS_TABLE_NAME,
@@ -137,6 +132,8 @@ export const handler = async (event: SNSEvent): Promise<void> => {
                             documentId,
                             status: 'failed'
                         });
+
+                        console.info('Marked document as failed in DynamoDB:', { userId, documentId });
                     }
                 }
             } catch (updateError) {

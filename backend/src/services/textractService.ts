@@ -9,7 +9,6 @@ import {
 } from '@aws-sdk/client-textract';
 
 import { StartDocumentTextDetectionParams, startDocumentTextDetectionParams } from '../types/textract-types'
-import formatTextractJobTag from '../utils/formatTextractJobTag';
 
 const textractClient = new TextractClient({ region: process.env.AWS_REGION });
 
@@ -77,7 +76,6 @@ export async function startDocumentTextDetection({
                 RoleArn: roleArn,
                 SNSTopicArn: snsTopicArn
             },
-            JobTag: formatTextractJobTag(userId, documentId),
         });
 
         const response = await textractClient.send(command);

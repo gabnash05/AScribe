@@ -92,7 +92,7 @@ export const handler = async (event: EventBridgeEvent<'Object Created', S3Object
                     fileSize,
                     textExtractionMethod: extractionMethod,
                     status: 'processing',
-                    tags: [],
+                    tags: [''],
                     extractedTextId: '', 
                     textractJobId,
                 }

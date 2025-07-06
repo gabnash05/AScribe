@@ -9,6 +9,8 @@ import {
     QueryCommand 
 } from "@aws-sdk/client-dynamodb";
 
+import { unmarshall } from '@aws-sdk/util-dynamodb';
+
 import { 
     SaveDocumentParams, 
     GetDocumentParams, 
@@ -29,9 +31,11 @@ import {
     DynamoDBDeleteResult,
     GetDocumentsByUserParams,
     DocumentStatus,
-    UpdateDocumentStatusParams
+    UpdateDocumentStatusParams,
+    GetDocumentsByJobIdParams,
 } from "../types/dynamoDB-types";
 import { text } from "stream/consumers";
+import { table } from "console";
 
 const dynamoDBClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 
@@ -220,6 +224,27 @@ export async function getDocumentFilePathFromDynamoDB({ tableName, userId }: {ta
             error instanceof Error ? error.message : 'Unknown error'
         }`);
     }
+}
+
+export async function getDocumentByJobIdInDynamoDB({ tableName, jobId }: GetDocumentsByJobIdParams): Promise<DocumentRecord | null> {
+    const command = new QueryCommand({
+        TableName: tableName,
+        IndexName: 'textractJob-index',
+        KeyConditionExpression: 'textractJobId = :tag',
+        ExpressionAttributeValues:{
+            ':tag': { S: jobId }
+        },
+        Limit: 1
+    });
+
+    const result = await dynamoDBClient.send(command);
+
+    if (!result.Items || result.Items.length === 0) {
+        return null;
+    }
+
+    const document = unmarshall(result.Items[0]) as DocumentRecord;
+    return document;
 }
 
 export async function updateDocumentInDynamoDB({ tableName, userId, documentId, document }: UpdateDocumentParams): Promise<DynamoDBUpdateResult> {

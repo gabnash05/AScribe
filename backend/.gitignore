@@ -41,3 +41,5 @@ out/
 # CDK context cache
 cdk.context.json
 cdk.asset.*
+
+src/tests/
