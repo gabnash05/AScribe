@@ -33,6 +33,8 @@ import {
     DocumentStatus,
     UpdateDocumentStatusParams,
     GetDocumentsByJobIdParams,
+    GetExtractedTextParams,
+    ExtractedTextRecord,
 } from "../types/dynamoDB-types";
 import { text } from "stream/consumers";
 import { table } from "console";
@@ -415,6 +417,44 @@ export async function saveExtractedTextToDynamoDB({ tableName, extractedTextReco
             throw new Error(`Failed to save extracted text to DynamoDB: ${error.message}`);
         }
         throw new Error(`Unexpected error during extracted text save: ${
+            error instanceof Error ? error.message : 'Unknown error'
+        }`);
+    }
+}
+
+export async function getExtractedTextInDynamoDB({ tableName, extractedTextId, documentId }: GetExtractedTextParams): Promise<ExtractedTextRecord | null> {
+    try {
+        const command = new GetItemCommand({
+            TableName: tableName,
+            Key: {
+                extractedTextId: { S: extractedTextId },
+                documentId: { S: documentId }
+            }
+        });
+
+        const response = await dynamoDBClient.send(command);
+
+        if (!response.Item) {
+            return null;
+        }
+
+        return {
+            extractedTextId: response.Item.extractedTextId.S!,
+            documentId: response.Item.documentId.S!,
+            userId: response.Item.userId.S!,
+            processedDate: response.Item.processedDate.S!,
+            verified: response.Item.verified.BOOL!,
+            textFileKey: response.Item.textFileKey.S!,
+            averageConfidence: parseFloat(response.Item.averageConfidence.N!),
+            summaryId: response.Item.summaryId?.S || undefined,
+            questionsId: response.Item.questionsId?.SS || [],
+            tokens: response.Item.tokens ? parseInt(response.Item.tokens.N!, 10) : undefined
+        }
+    } catch (error) {
+        if (error instanceof DynamoDBServiceException) {
+            throw new Error(`Failed to get extracted text from DynamoDB: ${error.message}`);
+        }
+        throw new Error(`Unexpected error during extracted text retrieval: ${
             error instanceof Error ? error.message : 'Unknown error'
         }`);
     }

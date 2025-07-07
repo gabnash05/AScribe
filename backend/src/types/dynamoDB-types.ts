@@ -23,6 +23,12 @@ export interface GetDocumentsByJobIdParams {
     jobId: string;
 }
 
+export interface GetExtractedTextParams { 
+    tableName: string;
+    extractedTextId: string; 
+    documentId: string;
+}
+
 export interface UpdateDocumentParams {
     tableName: string;
     userId: string;
