@@ -71,7 +71,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
             body: JSON.stringify({ 
                 message: 'Document finalized successfully' 
             }),
-        };
+        }
+        
     } catch (err) {
         console.error(err);
         return { 
