@@ -228,27 +228,40 @@ export async function getDocumentFilePathFromDynamoDB({ tableName, userId }: {ta
     }
 }
 
-export async function getDocumentByJobIdInDynamoDB({ tableName, jobId }: GetDocumentsByJobIdParams): Promise<DocumentRecord | null> {
-    const command = new QueryCommand({
-        TableName: tableName,
-        IndexName: 'textractJob-index',
-        KeyConditionExpression: 'textractJobId = :tag',
-        ExpressionAttributeValues:{
-            ':tag': { S: jobId }
-        },
-        Limit: 1
-    });
+export async function getDocumentByJobIdInDynamoDB({
+    tableName,
+    jobId
+}: GetDocumentsByJobIdParams): Promise<DocumentRecord | null> {
+    try {
+        const command = new QueryCommand({
+            TableName: tableName,
+            IndexName: 'textractJob-index',
+            KeyConditionExpression: 'textractJobId = :tag',
+            ExpressionAttributeValues: {
+                ':tag': { S: jobId }
+            },
+            Limit: 1
+        });
 
-    const result = await dynamoDBClient.send(command);
+        const result = await dynamoDBClient.send(command);
 
-    if (!result.Items || result.Items.length === 0) {
-        return null;
+        if (!result.Items || result.Items.length === 0) {
+            return null;
+        }
+
+        const document = unmarshall(result.Items[0]) as DocumentRecord;
+        return document;
+    } catch (error) {
+        if (error instanceof DynamoDBServiceException) {
+            throw new Error(`Failed to get document by jobId from DynamoDB: ${error.message}`);
+        }
+        throw new Error(
+            `Unexpected error during document retrieval by jobId: ${
+                error instanceof Error ? error.message : 'Unknown error'
+            }`
+        );
     }
-
-    const document = unmarshall(result.Items[0]) as DocumentRecord;
-    return document;
 }
-
 export async function updateDocumentInDynamoDB({ tableName, userId, documentId, document }: UpdateDocumentParams): Promise<DynamoDBUpdateResult> {
     try {
         const expressionParts: string[] = [];

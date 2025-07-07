@@ -1,13 +1,13 @@
 import { APIGatewayProxyHandler } from "aws-lambda";
 import * as dynamoDBService from '../../services/dynamoDBService'
 
-const DOCUMENTS_BUCKET = process.env.DOCUMENT_BUCKET || '';
-const DOCUMENTS_TABLE_NAME = process.env.DOCUMENTS_TABLE || '';
-const EXTRACTED_TEXTS_TABLE_NAME = process.env.EXTRACTED_TEXTS_TABLE || '';
+const DOCUMENTS_BUCKET = process.env.DOCUMENT_BUCKET!;
+const DOCUMENTS_TABLE_NAME = process.env.DOCUMENTS_TABLE!;
+const EXTRACTED_TEXTS_TABLE_NAME = process.env.EXTRACTED_TEXTS_TABLE!;
 
 export const handler: APIGatewayProxyHandler = async (event) => {
     try {
-        const { userId, documentId } = JSON.parse(event.body || '{}');
+        const { userId, documentId } = event.pathParameters || {};
 
         if (!userId || !documentId) {
             return {
