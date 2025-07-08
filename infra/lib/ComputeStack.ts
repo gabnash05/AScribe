@@ -212,8 +212,9 @@ export class ComputeStack extends Stack {
         documentsTable.grantReadData(this.createQuestionsLambda);
 
         // ExtractedTexts Table
+        extractedTextsTable.grantReadWriteData(this.getDocumentLambda);
         extractedTextsTable.grantWriteData(this.processUploadedFileLambda);
-        extractedTextsTable.grantWriteData(this.finalizeUploadLambda);
+        extractedTextsTable.grantReadWriteData(this.finalizeUploadLambda);
         extractedTextsTable.grantReadData(this.getExtractedTextLambda);
         extractedTextsTable.grantReadWriteData(this.updateExtractedTextLambda);
         extractedTextsTable.grantReadWriteData(this.deleteExtractedTextLambda);

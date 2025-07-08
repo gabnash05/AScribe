@@ -26,14 +26,37 @@ export const handler: APIGatewayProxyHandler = async (event) => {
             documentId
         });
 
+        console.log(document);
+
         if (!document) {
             return { statusCode: 404, body: JSON.stringify({ error: 'Document not found' }) };
+        }
+
+        if (!document.extractedTextId || document.extractedTextId.trim() === "") {
+            return {
+                statusCode: 400,
+                body: JSON.stringify({ error: 'Document is missing extractedTextId' }),
+            };
+        }
+
+        // Get extracted text metadata (to retrieve S3 key)
+        const extractedText = await dynamoDBService.getExtractedTextInDynamoDB({
+            tableName: EXTRACTED_TEXTS_TABLE,
+            extractedTextId: document.extractedTextId,
+            documentId
+        });
+
+        if (!extractedText || !extractedText.textFileKey) {
+            return {
+                statusCode: 404,
+                body: JSON.stringify({ error: 'Extracted text record or file key not found' }),
+            };
         }
 
         // Update finalized extracted text to S3
         await s3Service.deleteDocumentFromS3({
             bucket: DOCUMENTS_BUCKET,
-            key: document.extractedTextId
+            key: extractedText.textFileKey
         });
 
         const finalizedTextS3 = await s3Service.uploadExtractedText({
@@ -52,16 +75,16 @@ export const handler: APIGatewayProxyHandler = async (event) => {
                 filePath: newFilePath,
                 status: 'verified',
                 tags: newTags,
-                extractedTextId: finalizedTextS3.key
             }
         });
 
         // Update verification flag in extracted text
         await dynamoDBService.updateExtractedTextInDynamoDB({
             tableName: EXTRACTED_TEXTS_TABLE,
-            extractedTextId: finalizedTextS3.key,
+            extractedTextId: document.extractedTextId,
             documentId,
             extractedTextRecord: {
+                textFileKey: finalizedTextS3.key,
                 verified: true,
             },
         });

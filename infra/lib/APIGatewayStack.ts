@@ -41,7 +41,7 @@ export class APIGatewayStack extends Stack {
     constructor(scope: Construct, id: string, props: APIGatewayStackProps) {
         super(scope, id, props);
 
-        const { userPool, userPoolClient } = props;
+        const { userPool } = props;
 
         const {
             finalizeUploadLambda,
@@ -83,35 +83,35 @@ export class APIGatewayStack extends Stack {
         this.addLambdaRoute('documents', 'GET', getDocumentsLambda, authorizer);
 
         // Search
-        this.addLambdaRoute('documents/search', 'POST', searchDocumentsLambda, authorizer);
-        this.addLambdaRoute('documents/search/initialize', 'POST', initializeSearchIndexLambda, authorizer);
+        this.addLambdaRoute('documents/{userId}/search', 'POST', searchDocumentsLambda, authorizer);
+        this.addLambdaRoute('documents/{userId}/search/initialize', 'POST', initializeSearchIndexLambda, authorizer);
 
         // Individual Document
-        this.addLambdaRoute('documents/{documentId}', 'GET', getDocumentLambda, authorizer);
-        this.addLambdaRoute('documents/{documentId}', 'PUT', updateDocumentLambda, authorizer);
-        this.addLambdaRoute('documents/{documentId}', 'DELETE', deleteDocumentLambda, authorizer);
+        this.addLambdaRoute('documents/{userId}/{documentId}', 'GET', getDocumentLambda, authorizer);
+        this.addLambdaRoute('documents/{userId}/{documentId}', 'PUT', updateDocumentLambda, authorizer);
+        this.addLambdaRoute('documents/{userId}/{documentId}', 'DELETE', deleteDocumentLambda, authorizer);
 
-        this.addLambdaRoute('documents/{documentId}/finalize', 'POST', finalizeUploadLambda, authorizer);
-        this.addLambdaRoute('documents/{documentId}/tags', 'PUT', updateTagsLambda, authorizer);
+        this.addLambdaRoute('documents/{userId}/{documentId}/finalize', 'POST', finalizeUploadLambda, authorizer);
+        this.addLambdaRoute('documents/{userId}/{documentId}/tags', 'PUT', updateTagsLambda, authorizer);
 
         // Extracted Text
-        this.addLambdaRoute('documents/{documentId}/text', 'GET', getExtractedTextLambda, authorizer);
-        this.addLambdaRoute('documents/{documentId}/text', 'PUT', updateExtractedTextLambda, authorizer);
-        this.addLambdaRoute('documents/{documentId}/text', 'DELETE', deleteExtractedTextLambda, authorizer);
+        this.addLambdaRoute('documents/{userId}/{documentId}/text', 'GET', getExtractedTextLambda, authorizer);
+        this.addLambdaRoute('documents/{userId}/{documentId}/text', 'PUT', updateExtractedTextLambda, authorizer);
+        this.addLambdaRoute('documents/{userId}/{documentId}/text', 'DELETE', deleteExtractedTextLambda, authorizer);
 
         // Summary
-        this.addLambdaRoute('documents/{documentId}/summary', 'POST', createSummaryLambda, authorizer);
-        this.addLambdaRoute('documents/{documentId}/summary', 'GET', getSummaryLambda, authorizer);
-        this.addLambdaRoute('documents/{documentId}/summary', 'PUT', updateSummaryLambda, authorizer);
-        this.addLambdaRoute('documents/{documentId}/summary', 'DELETE', deleteSummaryLambda, authorizer);
+        this.addLambdaRoute('documents/{userId}/{documentId}/summary', 'POST', createSummaryLambda, authorizer);
+        this.addLambdaRoute('documents/{userId}/{documentId}/summary', 'GET', getSummaryLambda, authorizer);
+        this.addLambdaRoute('documents/{userId}/{documentId}/summary', 'PUT', updateSummaryLambda, authorizer);
+        this.addLambdaRoute('documents/{userId}/{documentId}/summary', 'DELETE', deleteSummaryLambda, authorizer);
 
         // Questions
-        this.addLambdaRoute('documents/{documentId}/questions', 'POST', createQuestionsLambda, authorizer);
-        this.addLambdaRoute('documents/{documentId}/questions', 'GET', getQuestionsLambda, authorizer);
+        this.addLambdaRoute('documents/{userId}/{documentId}/questions', 'POST', createQuestionsLambda, authorizer);
+        this.addLambdaRoute('documents/{userId}/{documentId}/questions', 'GET', getQuestionsLambda, authorizer);
 
-        this.addLambdaRoute('documents/{documentId}/questions/{questionId}', 'GET', getQuestionLambda, authorizer);
-        this.addLambdaRoute('documents/{documentId}/questions/{questionId}', 'PUT', updateQuestionLambda, authorizer);
-        this.addLambdaRoute('documents/{documentId}/questions/{questionId}', 'DELETE', deleteQuestionLambda, authorizer);
+        this.addLambdaRoute('documents/{userId}/{documentId}/questions/{questionId}', 'GET', getQuestionLambda, authorizer);
+        this.addLambdaRoute('documents/{userId}/{documentId}/questions/{questionId}', 'PUT', updateQuestionLambda, authorizer);
+        this.addLambdaRoute('documents/{userId}/{documentId}/questions/{questionId}', 'DELETE', deleteQuestionLambda, authorizer);
     }
 
     private addLambdaRoute(path: string, method: string, lambdaFn: IFunction, authorizer: CognitoUserPoolsAuthorizer): void {

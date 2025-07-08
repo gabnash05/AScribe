@@ -75,12 +75,14 @@ export const handler: APIGatewayProxyHandler = async (event) => {
             }),
         }
 
-    } catch (error) {
-        console.error(error);
+    } catch (error: any) {
+        console.error("Lambda error:", error);
         return { 
             statusCode: 500, 
             body: JSON.stringify({ 
-                error: 'Internal server error' 
+                error: 'Internal server error',
+                message: error.message,
+                stack: error.stack
             }),
         };
     }

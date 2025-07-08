@@ -479,12 +479,6 @@ export async function updateExtractedTextInDynamoDB({ tableName, extractedTextId
         const attributeValues: Record<string, AttributeValue> = {};
         const attributeNames: Record<string, string> = {};
 
-        if (extractedTextRecord.documentId !== undefined) {
-            expressionParts.push('#documentId = :documentId');
-            attributeNames['#documentId'] = 'documentId';
-            attributeValues[':documentId'] = { S: extractedTextRecord.documentId };
-        }
-
         if (extractedTextRecord.verified !== undefined) {
             expressionParts.push('#verified = :verified');
             attributeNames['#verified'] = 'verified';

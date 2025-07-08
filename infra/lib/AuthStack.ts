@@ -103,6 +103,16 @@ export class AuthStack extends Stack {
             })
         );
 
+        authenticatedRole.addToPolicy(
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: ['execute-api:Invoke'],
+                resources: [
+                    '*' // TODO: Restrict to specific API Gateway resources
+                ]
+            })
+        );
+
         // Attach role to Identity Pool
         new CfnIdentityPoolRoleAttachment(this, 'IdentityPoolRoleAttachment', {
             identityPoolId: identityPool.ref,
