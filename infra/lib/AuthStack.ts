@@ -98,7 +98,8 @@ export class AuthStack extends Stack {
                 effect: Effect.ALLOW,
                 actions: ['s3:PutObject', 's3:GetObject', 's3:DeleteObject'],
                 resources: [
-                    `arn:aws:s3:::${props.documentBucketName}/temp/\${cognito-identity.amazonaws.com:sub}/*`
+                    `arn:aws:s3:::${props.documentBucketName}/temp/\${cognito-identity.amazonaws.com:sub}/*`,
+                    `arn:aws:s3:::${props.documentBucketName}/extracted-texts/*`,
                 ]
             })
         );
