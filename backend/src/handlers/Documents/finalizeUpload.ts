@@ -9,7 +9,7 @@ const EXTRACTED_TEXTS_TABLE = process.env.EXTRACTED_TEXTS_TABLE!;
 
 export const handler: APIGatewayProxyHandler = async (event) => {
     try {
-        const { userId, documentId, finalizedText, newFilePath, newTags, isUpdated } = JSON.parse(event.body || '{}');
+        const { userId, documentId, finalizedText, newFilePath, newTags } = JSON.parse(event.body || '{}');
 
         if (!userId || !documentId || !finalizedText || !newFilePath || !newTags) {
             return { 
