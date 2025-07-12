@@ -178,29 +178,3 @@ export const DocumentViewer: React.FC<ViewerProps> = ({
         </div>
     );
 };
-
-async function streamToString(body: any): Promise<string> {
-    // For modern browsers or AWS SDK polyfill using transformToWebStream
-    if (typeof body?.transformToWebStream === "function") {
-        const webStream = body.transformToWebStream();
-        const reader = webStream.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let result = "";
-        let done = false;
-
-        while (!done) {
-            const { value, done: streamDone } = await reader.read();
-            if (value) result += decoder.decode(value, { stream: true });
-            done = streamDone;
-        }
-
-        return result;
-    }
-
-    // For Blob-based bodies (used in some browsers or S3 mocks)
-    if (typeof body?.text === "function") {
-        return await body.text();
-    }
-
-    throw new Error("Unsupported response body type. Cannot convert to string.");
-}
