@@ -1,30 +1,23 @@
 import axios from "axios";
 
 const REGION = "ap-southeast-2";
-const API_ID = "pqyri6a4uc";
+const API_ID = "f3r6iqhome";
 const STAGE = "prod";
 
 function buildUrl(path: string) {
     return `https://${API_ID}.execute-api.${REGION}.amazonaws.com/${STAGE}/${path}`;
 }
 
-export async function getDocument(
-    userId: string, 
-    documentId: string, 
-    idToken: string
-) {
+export async function getDocument(userId: string, documentId: string, idToken: string) {
     const url = buildUrl(`documents/${userId}/${documentId}`);
-
-    console.log({
-        userId,
-        documentId,
-        idToken
-    })
-
+    
     const res = await axios.get(url, {
-        headers: { Authorization: `Bearer ${idToken}` },
+        headers: { 
+            Authorization: `Bearer ${idToken}`,
+            'Content-Type': 'application/json'
+        },
     });
-
+    
     return res.data;
 }
 

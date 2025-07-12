@@ -53,6 +53,12 @@ export class AuthStack extends Stack {
             }
         });
 
+        this.userPool.addDomain('AScribeUserPoolDomain', {
+            cognitoDomain: {
+                domainPrefix: 'ascribe-dev',
+            },
+        });
+
         this.userPoolClient = new UserPoolClient(this, 'AScribeUserPoolClient', {
             userPool: this.userPool,
             userPoolClientName: 'AScribeUserPoolClient',

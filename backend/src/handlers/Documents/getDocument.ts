@@ -12,6 +12,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         if (!userId || !documentId) {
             return {
                 statusCode: 400,
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Credentials': true,
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify({
                     error: 'Missing userId or documentId',
                 }),
@@ -26,7 +31,12 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
         if (!document) {
             return { 
-                statusCode: 404, 
+                statusCode: 404,
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Credentials': true,
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify({ 
                     error: 'Document not found' 
                 }) 
@@ -36,6 +46,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         if (document.status !== 'cleaned') {
             return {
                 statusCode: 200,
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Credentials': true,
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify({ status: document.status })
             };
         }
@@ -48,7 +63,12 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
         if (!extractedText) {
             return { 
-                statusCode: 404, 
+                statusCode: 404,
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Credentials': true,
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify({ 
                     error: 'Extracted text not found' 
                 }) 
@@ -57,6 +77,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
         return {
             statusCode: 200,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Credentials': true,
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({
                 documentId: document.documentId,
                 userId: document.userId,
@@ -78,7 +103,12 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     } catch (error: any) {
         console.error("Lambda error:", error);
         return { 
-            statusCode: 500, 
+            statusCode: 500,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Credentials': true,
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({ 
                 error: 'Internal server error',
                 message: error.message,

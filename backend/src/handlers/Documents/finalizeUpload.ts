@@ -14,6 +14,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         if (!userId || !documentId || !finalizedText || !newFilePath || !newTags) {
             return { 
                 statusCode: 400, 
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Credentials': true,
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify({ 
                     error: 'Missing required fields' 
                 }) 
@@ -29,12 +34,25 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         console.log(document);
 
         if (!document) {
-            return { statusCode: 404, body: JSON.stringify({ error: 'Document not found' }) };
+            return { 
+                statusCode: 404,
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Credentials': true,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ error: 'Document not found' }) 
+            };
         }
 
         if (!document.extractedTextId || document.extractedTextId.trim() === "") {
             return {
                 statusCode: 400,
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Credentials': true,
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify({ error: 'Document is missing extractedTextId' }),
             };
         }
@@ -49,6 +67,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         if (!extractedText || !extractedText.textFileKey) {
             return {
                 statusCode: 404,
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Credentials': true,
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify({ error: 'Extracted text record or file key not found' }),
             };
         }
@@ -91,6 +114,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
         return {
             statusCode: 200,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Credentials': true,
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({ 
                 message: 'Document finalized successfully' 
             }),
@@ -100,6 +128,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         console.error(err);
         return { 
             statusCode: 500, 
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Credentials': true,
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({ error: 'Internal server error' }) };
     }
 };

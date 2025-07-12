@@ -5,25 +5,30 @@ interface UploadFormProps {
     identityId: string;
     credentials: any;
     documentId: string;
+    onUploadComplete: () => void;
 }
 
 export const UploadForm: React.FC<UploadFormProps> = ({
     identityId,
     credentials,
     documentId,
+    onUploadComplete,
 }) => {
     const [file, setFile] = useState<File | null>(null);
 
     const handleUpload = async () => {
         if (!file) return;
+
         await uploadToS3(file, identityId, documentId, credentials);
-        alert("✅ File uploaded.");
+
+        alert("File uploaded.");
         setFile(null);
+        onUploadComplete();
     };
 
     return (
         <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow space-y-4">
-            <h3 className="text-xl font-semibold text-gray-800 text-center">📤 Upload File</h3>
+            <h3 className="text-xl font-semibold text-gray-800 text-center">Upload File</h3>
 
             <input
                 type="file"

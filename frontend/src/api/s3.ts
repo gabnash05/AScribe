@@ -29,10 +29,13 @@ export async function uploadToS3(
 
     const key = `temp/${identityId}/${documentId}/${file.name}`;
 
+    const arrayBuffer = await file.arrayBuffer();
+    const uint8 = new Uint8Array(arrayBuffer);
+
     const command = new PutObjectCommand({
         Bucket: BUCKET_NAME,
         Key: key,
-        Body: file,
+        Body: uint8,
         ContentType: file.type,
         Metadata: {
             "uploaded-by": identityId,
@@ -40,8 +43,6 @@ export async function uploadToS3(
             "original-filename": file.name,
         },
     });
-
-    console.log(command)
 
     await s3.send(command);
     return key;

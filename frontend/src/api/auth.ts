@@ -2,77 +2,97 @@ import { CognitoIdentityClient, GetCredentialsForIdentityCommand, GetIdCommand, 
 import { AuthFlowType, CognitoIdentityProviderClient, InitiateAuthCommand, SignUpCommand } from "@aws-sdk/client-cognito-identity-provider";
 
 const REGION = "ap-southeast-2";
-const USER_POOL_ID = "ap-southeast-2_ZpDpI8vBj";
-const CLIENT_ID = "3ntp21ausu2tt8d0adgeuafmbr";
-const IDENTITY_POOL_ID = "ap-southeast-2:779d9b6e-3ae6-4ff9-9680-c34449a02a18";
+const USER_POOL_ID = "ap-southeast-2_aRynD89CS";
+const CLIENT_ID = "5v8edn82vme3ilkmh1dbdlbbn1";
+const IDENTITY_POOL_ID = "ap-southeast-2:79d36f63-1948-4069-9a2f-7b29b5efc405";
 
 export async function signUp(username: string, password: string, email: string) {
+    if (!username || !password || !email) {
+        throw new Error("Username, password, and email are required.");
+    }
+
+    const client = new CognitoIdentityProviderClient({ region: REGION });
+
+    const command = new SignUpCommand({
+        ClientId: CLIENT_ID,
+        Username: username,
+        Password: password,
+        UserAttributes: [
+            { Name: "email", Value: email },
+            { Name: "given_name", Value: username }, 
+        ],
+    });
+
     try {
-        if (!username || !password || !email) {
-            throw new Error("Username, password, and email are required.");
-        }
-
-        const client = new CognitoIdentityProviderClient({ region: REGION });
-
-        const command = new SignUpCommand({
-            ClientId: CLIENT_ID,
-            Username: username,
-            Password: password,
-            UserAttributes: [{ Name: "email", Value: email }],
-        });
-
-        console.log(command)
-
-        return client.send(command);
+        return await client.send(command);
     } catch (error) {
-        console.error("Error during sign up:", error);
+        console.error("Sign up error:", error);
         throw new Error(`Sign up failed: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
 }
 
-export async function login(username: string, password: string): Promise<string | undefined> {
+export async function login(username: string, password: string): Promise<string> {
+    if (!username || !password) {
+        throw new Error("Username and password are required.");
+    }
+
+    const client = new CognitoIdentityProviderClient({ region: REGION });
+
+    const command = new InitiateAuthCommand({
+        ClientId: CLIENT_ID,
+        AuthFlow: AuthFlowType.USER_PASSWORD_AUTH,
+        AuthParameters: {
+            USERNAME: username,
+            PASSWORD: password,
+        },
+    });
+
     try {
-        if (!username || !password) {
-            throw new Error("Username and password are required.");
-        }
-
-        const client = new CognitoIdentityProviderClient({ region: REGION });
-
-        const command = new InitiateAuthCommand({
-            ClientId: CLIENT_ID,
-            AuthFlow: AuthFlowType.USER_PASSWORD_AUTH,
-            AuthParameters: { USERNAME: username, PASSWORD: password},
-        })
-
-        console.log(command)
-
         const response = await client.send(command);
-        return response.AuthenticationResult?.IdToken;
+        if (!response.AuthenticationResult?.IdToken) {
+            throw new Error("Login failed: No ID token returned.");
+        }
+        return response.AuthenticationResult.IdToken;
     } catch (error) {
-        console.error("Error during login:", error);
+        console.error("Login error:", error);
         throw new Error(`Login failed: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
 }
 
-export async function getAWSCredentials(idToken: string): Promise<{ identityId: string | undefined, credentials: Credentials | undefined }> {
+
+export async function getAWSCredentials(idToken: string): Promise<{
+    identityId: string;
+    credentials: Credentials;
+}> {
     const identityClient = new CognitoIdentityClient({ region: REGION });
 
-    const idResp = await identityClient.send(new GetIdCommand({
-        IdentityPoolId: IDENTITY_POOL_ID,
-        Logins: {
-            [`cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}`]: idToken,
-        }
-    }));
+    const loginsKey = `cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}`;
 
-    const credsResp = await identityClient.send(new GetCredentialsForIdentityCommand({
-        IdentityId: idResp.IdentityId,
-        Logins: {
-            [`cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}`]: idToken,
-        }
-    }));
+    try {
+        const idResp = await identityClient.send(
+            new GetIdCommand({
+                IdentityPoolId: IDENTITY_POOL_ID,
+                Logins: {
+                    [loginsKey]: idToken,
+                },
+            })
+        );
 
-    return {
-        identityId: idResp.IdentityId!,
-        credentials: credsResp.Credentials!,
+        const credsResp = await identityClient.send(
+            new GetCredentialsForIdentityCommand({
+                IdentityId: idResp.IdentityId,
+                Logins: {
+                    [loginsKey]: idToken,
+                },
+            })
+        );
+
+        return {
+            identityId: idResp.IdentityId!,
+            credentials: credsResp.Credentials!,
+        };
+    } catch (error) {
+        console.error("Failed to get AWS credentials:", error);
+        throw new Error(`Credential retrieval failed: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
 }
