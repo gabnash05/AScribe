@@ -1,1 +1,29 @@
-@import "tailwindcss"
+@import "tailwindcss";
+
+:root {
+    --color-primary: #1B73D3;
+    --color-primary-dark: #010079;
+    --color-primary-dark-2: #000045;
+    --color-secondary: #D5AD36;
+    --color-secondary-dark: #CD9703;
+    --color-secondary-light: #ffe69b;
+}
+
+html, body, #root {
+  font-family: 'Josefin Sans', sans-serif;
+}
+
+/*
+For Markdown Editor
+Fix found at:
+https://github.com/typehero/typehero/issues/785
+*/
+.markdown-preview ul {
+  list-style-type: disc !important;
+  padding-left: 1.5rem !important;
+}
+
+.markdown-preview ol {
+  list-style-type: decimal !important;
+  padding-left: 1.5rem !important;
+}

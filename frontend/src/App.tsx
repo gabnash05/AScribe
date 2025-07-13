@@ -30,7 +30,7 @@ function App() {
         setCredentials(credentials);
     };
 
-    const handleUploadStart = () => {
+    const onUploadStart = () => {
         const newId = uuidv4();
         setDocumentId(newId);
         setUploadCompleted(false);
@@ -42,45 +42,41 @@ function App() {
 
     if (!idToken || !identityId || !credentials) {
         return (
-            <div className="items-center justify-center min-h-screen px-4">
+            <div className="items-center justify-center min-h-screen bg-gray">
                 <Auth onAuthSuccess={handleAuthSuccess} />
             </div>
         );
     }
 
     return (
-        <div className="max-w-4xl mx-auto p-8 space-y-8 font-sans">
+        <div className="min-h-screen bg-gray-100 p-8 space-y-8">
             <header>
-                <h1 className="text-3xl font-bold text-gray-800 mb-2">AScribe Test Interface</h1>
+                <h1 className="text-3xl font-bold text-gray-800 mb-2">Scan Documents</h1>
                 <hr className="border-t border-gray-300" />
             </header>
 
-            <button
-                onClick={handleUploadStart}
-                className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded"
-            >
-                Start New Upload
-            </button>
-
-            {documentId && (
-                <>
+            <div className="max-w-6xl mx-auto flex flex-col gap-8">
+                <div className="w-full">
                     <UploadForm
                         identityId={identityId}
                         credentials={credentials}
-                        documentId={documentId}
+                        documentId={documentId!}
                         onUploadComplete={handleUploadComplete}
+                        onUploadStart={onUploadStart}
                     />
+                </div>
 
+                <div className="w-full">
                     <DocumentViewer
                         identityId={identityId}
                         idToken={idToken}
-                        documentId={documentId}
+                        documentId={documentId!}
                         credentials={credentials}
                         shouldFetch={uploadCompleted}
                         onFetchComplete={() => setUploadCompleted(false)}
                     />
-                </>
-            )}
+                </div>
+            </div>
         </div>
     );
 }
