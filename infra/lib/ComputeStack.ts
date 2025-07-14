@@ -269,6 +269,8 @@ export class ComputeStack extends Stack {
                 `arn:aws:bedrock:${props.env.region}::foundation-model/${props.bedrockModelID}`
             ]
         });
+
+        this.processUploadedFileLambda.addToRolePolicy(bedrockPolicy);
         this.finalizeUploadLambda.addToRolePolicy(bedrockPolicy);
         this.handleTextractJobCompletionLambda.addToRolePolicy(bedrockPolicy);
         this.createSummaryLambda.addToRolePolicy(bedrockPolicy);

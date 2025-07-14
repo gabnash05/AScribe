@@ -1,10 +1,10 @@
 import { CognitoIdentityClient, GetCredentialsForIdentityCommand, GetIdCommand, type Credentials } from "@aws-sdk/client-cognito-identity";
 import { AuthFlowType, CognitoIdentityProviderClient, InitiateAuthCommand, SignUpCommand } from "@aws-sdk/client-cognito-identity-provider";
 
-const REGION = "ap-southeast-2";
-const USER_POOL_ID = "ap-southeast-2_rKO6u1jqO";
-const CLIENT_ID = "6t9mc6s7d11mb3l94ve7c4a9ab";
-const IDENTITY_POOL_ID = "ap-southeast-2:86cb9f35-44df-4a2f-89c6-29131daaa059";
+const REGION = import.meta.env.VITE_AWS_REGION;
+const USER_POOL_ID = import.meta.env.VITE_USER_POOL_ID;
+const CLIENT_ID = import.meta.env.VITE_CLIENT_ID;
+const IDENTITY_POOL_ID = import.meta.env.VITE_IDENTITY_POOL_ID;
 
 export async function signUp(username: string, password: string, email: string) {
     if (!username || !password || !email) {

@@ -35,20 +35,30 @@ export async function cleanExtractedTextWithBedrock({
             contentType: 'application/json',
             accept: 'application/json',
             body: Buffer.from(JSON.stringify({
-                prompt,
-                max_tokens_to_sample: 2048,
-                temperature: 0.3, // Low creativity for cleanup tasks
-                top_k: 250,
-                stop_sequences: ['</response>']
+                messages: [
+                    {
+                        role: 'user',
+                        content: [{ text: prompt }]
+                    }
+                ],
+                inferenceConfig: {
+                    maxTokens: 500,
+                    temperature: 0.3,
+                    topK: 30,
+                    stopSequences: ['</response>']
+                }
             }))
         };
 
         const command = new InvokeModelCommand(input);
+        
         const response = await bedrockClient.send(command);
-
         const decoded = JSON.parse(new TextDecoder().decode(response.body));
 
-        return parseBedrockCleanupResponse(decoded.completion || '');
+        console.log(`Bedrock raw response: ${decoded}`);
+        
+        return parseBedrockCleanupResponse(decoded);
+        
     } catch (error) {
         if (error instanceof BedrockRuntimeServiceException) {
             throw new Error(`Failed to invoke Bedrock model: ${error.message}`);
@@ -70,24 +80,34 @@ export async function generateSummary({
 
         const prompt = buildSummaryPrompt(cleanedText);
 
-        const command = new InvokeModelCommand({
+        const input: InvokeModelCommandInput = {
             modelId,
             contentType: 'application/json',
             accept: 'application/json',
             body: Buffer.from(JSON.stringify({
-                prompt,
-                max_tokens_to_sample: 1024,
-                temperature: 0.5, // Moderate creativity
-                stop_sequences: ['</response>']
+                messages: [
+                    {
+                        role: 'user',
+                        content: [{ text: prompt }]
+                    }
+                ],
+                inferenceConfig: {
+                    maxTokens: 500,
+                    temperature: 0.5,
+                    stopSequences: ['</response>']
+                }
             }))
-        });
+        };
+
+        const command = new InvokeModelCommand(input);
 
         const response = await bedrockClient.send(command);
         const decoded = JSON.parse(new TextDecoder().decode(response.body));
+        // MAY NOT WORK. REFER TO cleanExtractedText FUNCTION
+        const content = decoded?.outputs?.[0]?.text || '';
 
-        return {
-            summary: (decoded.completion || '').trim()
-        };
+        return { summary: content.trim() };
+
     } catch (error) {
         if (error instanceof BedrockRuntimeServiceException) {
             throw new Error(`Failed to generate summary: ${error.message}`);
@@ -114,72 +134,65 @@ export async function generateQuestion({
 
         const prompt = buildQuestionsPrompt(cleanedText, questionCount);
 
-        const command = new InvokeModelCommand({
+        const input: InvokeModelCommandInput = {
             modelId,
             contentType: 'application/json',
             accept: 'application/json',
             body: Buffer.from(JSON.stringify({
-                prompt,
-                max_tokens_to_sample: 2048,
-                temperature: 0.7,   // Moderate creativity for question generation
-                stop_sequences: ['</response>']
+                messages: [
+                    {
+                        role: 'user',
+                        content: [{ text: prompt }]
+                    }
+                ],
+                inferenceConfig: {
+                    maxTokens: 500,
+                    temperature: 0.7,
+                    stopSequences: ['</response>']
+                }
             }))
-        });
+        };
+
+        const command = new InvokeModelCommand(input);
 
         const response = await bedrockClient.send(command);
         const decoded = JSON.parse(new TextDecoder().decode(response.body));
-        const completionText = decoded.completion || '';
+        // MAY NOT WORK. REFER TO cleanExtractedText FUNCTION
+        const completionText = decoded?.outputs?.[0]?.text || '';
 
-        // Improved JSON extraction
         const jsonMatch = completionText.match(/\[[\s\S]*\]/);
         if (!jsonMatch) {
             throw new Error('No JSON array found in response');
         }
 
-        let questions: QuestionItem[] = JSON.parse(jsonMatch[0]); 
-
-        // Validate each question
-        if (!Array.isArray(questions)) {
-            throw new Error('Generated questions are not in an array format');
-        }
+        const questions: QuestionItem[] = JSON.parse(jsonMatch[0]);
 
         const validatedQuestions: QuestionItem[] = [];
         for (const q of questions) {
-            try {
-                // Validate question structure
-                 if (typeof q !== 'object' || q === null) {
-                    console.warn('Skipping invalid question format');
-                    continue;
-                }
+            if (typeof q !== 'object' || q === null) continue;
 
-                const validatedQuestion: QuestionItem = {
-                    tags: Array.isArray(q.tags)
-                        ? q.tags.filter((tag: unknown) => typeof tag === 'string')
-                              .map((tag: string) => tag.trim())
-                        : [],
-                    question: typeof q.question === 'string' ? q.question.trim() : '',
-                    answer: typeof q.answer === 'string' ? q.answer.trim() : '',
-                    choices: Array.isArray(q.choices)
-                        ? q.choices.filter((choice: unknown) => typeof choice === 'string')
-                                  .map((choice: string) => choice.trim())
-                        : []
-                };
+            const validatedQuestion: QuestionItem = {
+                tags: Array.isArray(q.tags)
+                    ? q.tags.filter((tag: unknown) => typeof tag === 'string').map(tag => tag.trim())
+                    : [],
+                question: typeof q.question === 'string' ? q.question.trim() : '',
+                answer: typeof q.answer === 'string' ? q.answer.trim() : '',
+                choices: Array.isArray(q.choices)
+                    ? q.choices.filter((c: unknown) => typeof c === 'string').map(c => c.trim())
+                    : []
+            };
 
-                // Basic content validation
-                if (!validatedQuestion.question || !validatedQuestion.answer || validatedQuestion.choices.length < 2) {
-                    console.warn('Skipping incomplete question');
-                    continue;
-                }
+            if (
+                !validatedQuestion.question ||
+                !validatedQuestion.answer ||
+                validatedQuestion.choices.length < 2
+            ) continue;
 
-                // Ensure answer is in choices
-                if (!validatedQuestion.choices.includes(validatedQuestion.answer)) {
-                    validatedQuestion.choices.push(validatedQuestion.answer);
-                }
-
-                validatedQuestions.push(validatedQuestion);
-            } catch (questionError) {
-                console.warn('Error validating question:', questionError);
+            if (!validatedQuestion.choices.includes(validatedQuestion.answer)) {
+                validatedQuestion.choices.push(validatedQuestion.answer);
             }
+
+            validatedQuestions.push(validatedQuestion);
         }
 
         if (validatedQuestions.length === 0) {
@@ -187,6 +200,7 @@ export async function generateQuestion({
         }
 
         return { questions: validatedQuestions };
+
     } catch (error) {
         if (error instanceof BedrockRuntimeServiceException) {
             throw new Error(`Failed to generate questions: ${error.message}`);
@@ -207,9 +221,10 @@ You are an assistant helping students organize digitized notes from OCR. Given t
 
 1. Fix formatting and grammar.
 2. Correct spelling errors **only if the average OCR confidence rating suggests the text is reliable (e.g., ≥85%)**. If the average confidence is lower, be cautious: only correct obvious spelling errors and avoid guessing unclear words. You may preserve uncertain words as-is or flag them (e.g., with [brackets]).
-3. Organize the content into a clean, readable structure that preserves the original layout as much as possible.
-4. Generate 4–6 relevant topic tags. Tags should describe the subject, topic, academic level, and document type (e.g., biology, photosynthesis, grade 11, review).
-5. Suggest a descriptive file path based on the topic and content.
+3. Organize the content into a clean, readable structure using Markdown.
+4. Preserve the original layout as much as possible.
+5. Generate 4–6 relevant topic tags. Tags should describe the subject, topic, academic level, and document type (e.g., biology, photosynthesis, grade 11, review).
+6. Suggest a descriptive file path based on the topic and content.
     - If the content fits into an existing path, reuse that path.
     - If the topic is new, create a clean, concise new path.
 
@@ -282,15 +297,25 @@ Return a valid JSON array of question objects only, with no additional commentar
 </response>`;
 }
 
-function parseBedrockCleanupResponse(responseText: string): CleanExtractedTextWithBedrockResult {
+function parseBedrockCleanupResponse(responseJson: any): CleanExtractedTextWithBedrockResult {
     try {
-        // Trim and normalize the response text first
-        const normalizedText = responseText.trim();
-        
-        // More robust JSON extraction that handles common LLM response patterns
+        // Extract Claude/Nova-style content
+        const contentArray = responseJson?.output?.message?.content;
+        if (!Array.isArray(contentArray) || contentArray.length === 0) {
+            throw new Error('Missing content array in Claude response');
+        }
+
+        const text = contentArray[0]?.text;
+        if (typeof text !== 'string' || text.trim().length === 0) {
+            throw new Error('Claude response text is empty or not a string');
+        }
+
+        const normalizedText = text.trim();
+
+        // Match the first JSON object in the text
         const jsonMatch = normalizedText.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
-            throw new Error('No JSON object found in response');
+            throw new Error('No JSON object found in response text');
         }
 
         const jsonStr = jsonMatch[0];
@@ -301,17 +326,16 @@ function parseBedrockCleanupResponse(responseText: string): CleanExtractedTextWi
             throw new Error('Invalid response format - expected object');
         }
 
-        // Ensure cleanedText exists and is a string
         const cleanedText = typeof parsed.cleanedText === 'string' 
             ? parsed.cleanedText.trim() 
             : '';
 
-        // Validate tags array
         const tags = Array.isArray(parsed.tags)
-            ? parsed.tags.filter((tag: unknown) => typeof tag === 'string').map((tag: string) => tag.trim())
+            ? parsed.tags
+                .filter((tag: unknown) => typeof tag === 'string')
+                .map((tag: string) => tag.trim())
             : [];
 
-        // Check file path (support both suggestedFilePath and filePath for backward compatibility)
         const suggestedFilePath = parsed.suggestedFilePath;
 
         return {
@@ -322,6 +346,6 @@ function parseBedrockCleanupResponse(responseText: string): CleanExtractedTextWi
     } catch (error) {
         throw new Error(`Failed to parse Bedrock cleanup response: ${
             error instanceof Error ? error.message : 'Invalid response format'
-        }\nResponse received: ${responseText.slice(0, 200)}...`);
+        }\nRaw Claude response: ${JSON.stringify(responseJson).slice(0, 300)}...`);
     }
 }

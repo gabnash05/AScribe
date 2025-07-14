@@ -115,19 +115,14 @@ export const handler = async (event: EventBridgeEvent<'Object Created', S3Object
             userId,
         }); 
 
-        // const cleaned = await bedrockService.cleanExtractedTextWithBedrock({
-        //     modelId: BEDROCK_MODEL_ID,
-        //     extractedText,
-        //     averageConfidence,
-        //     currentFilePaths,
-        // });
+        const cleaned = await bedrockService.cleanExtractedTextWithBedrock({
+            modelId: BEDROCK_MODEL_ID,
+            extractedText,
+            averageConfidence,
+            currentFilePaths,
+        });
         
-        // const { cleanedText, tags, suggestedFilePath } = cleaned;
-
-        // For Testing
-        const cleanedText = extractedText;
-        const tags = ['science', 'geology', 'sedimentary rock']
-        const suggestedFilePath = '/science/geology/';
+        const { cleanedText, tags, suggestedFilePath } = cleaned;
 
         // Store Cleaned Text in S3
         const cleanedTextResult = await s3Service.uploadExtractedText({
