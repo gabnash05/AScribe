@@ -2,9 +2,9 @@ import { CognitoIdentityClient, GetCredentialsForIdentityCommand, GetIdCommand, 
 import { AuthFlowType, CognitoIdentityProviderClient, InitiateAuthCommand, SignUpCommand } from "@aws-sdk/client-cognito-identity-provider";
 
 const REGION = "ap-southeast-2";
-const USER_POOL_ID = "ap-southeast-2_jESeuymj8";
-const CLIENT_ID = "4jveoij7ha6g306j4ssfemb1ah";
-const IDENTITY_POOL_ID = "ap-southeast-2:e524f935-d6de-45e7-91f0-0baf84f985ef";
+const USER_POOL_ID = "ap-southeast-2_rKO6u1jqO";
+const CLIENT_ID = "6t9mc6s7d11mb3l94ve7c4a9ab";
+const IDENTITY_POOL_ID = "ap-southeast-2:86cb9f35-44df-4a2f-89c6-29131daaa059";
 
 export async function signUp(username: string, password: string, email: string) {
     if (!username || !password || !email) {

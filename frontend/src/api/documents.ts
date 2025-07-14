@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const REGION = "ap-southeast-2";
-const API_ID = "j1wn0romad";
+const API_ID = "nbok7rtdtc";
 const STAGE = "prod";
 
 function buildUrl(path: string) {
@@ -30,14 +30,6 @@ export async function finalizeDocument(
     tags: string[],
 ) {
     const url = buildUrl(`documents/${userId}/${documentId}/finalize`);
-
-    console.log({
-        userId,
-        documentId,
-        finalizedText,
-        newFilePath: newFilePath,
-        newTags: tags,
-    });
 
     const res = await axios.post(
         url,

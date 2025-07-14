@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { login, getAWSCredentials } from "../../api/auth";
+import { login, getAWSCredentials } from "../api/auth";
 
 interface Props {
     onAuthSuccess: (idToken: string, identityId: string, credentials: any) => void;

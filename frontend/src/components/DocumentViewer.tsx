@@ -1,31 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { getDocument, finalizeDocument } from "../api/documents.ts";
 import { getDocumentTextFromS3 } from "../api/s3.ts";
-
 import MDEditor from '@uiw/react-md-editor';
+import { useAuth } from "../contexts/AuthContext";
+import { useDocument } from "../contexts/DocumentContext";
 
-
-interface ViewerProps {
-    identityId: string;
-    idToken: string;
-    documentId: string;
-    credentials: {
-        AccessKeyId: string;
-        SecretKey: string;
-        SessionToken: string;
-    };
-    shouldFetch: boolean;
-    onFetchComplete: () => void;
-}
-
-export const DocumentViewer: React.FC<ViewerProps> = ({
-    identityId,
-    idToken,
-    documentId,
-    credentials,
-    shouldFetch,
-    onFetchComplete,
-}) => {
+export const DocumentViewer = () => {
+    const { documentId, uploadCompleted, setUploadCompleted, resetDocumentState } = useDocument();
+    const { idToken, identityId, credentials } = useAuth();
+    
     const [text, setText] = useState<string>("");
     const [filePath, setFilePath] = useState<string>("");
     const [tags, setTags] = useState<string[]>([]);
@@ -33,8 +16,12 @@ export const DocumentViewer: React.FC<ViewerProps> = ({
     const [loading, setLoading] = useState<boolean>(false);
     const [finalizing, setFinalizing] = useState<boolean>(false);
 
+    const onFetchComplete = () => {
+        setUploadCompleted(false);
+    };
+
     useEffect(() => {
-        if (!shouldFetch) return;
+        if (!uploadCompleted || !idToken || !identityId || !documentId) return;
 
         let attempts = 0;
         let cancelled = false;
@@ -50,18 +37,19 @@ export const DocumentViewer: React.FC<ViewerProps> = ({
             while (attempts < maxAttempts && !cancelled) {
                 try {
                     const doc = await getDocument(identityId, documentId, idToken);
-                    console.log(doc)
 
                     if (doc.status === "cleaned" && doc.textFileKey) {
-                        setFilePath(doc.filePath ?? "");
+                        setFilePath(doc.filePath ?? ""); 
                         setTags(doc.tags ?? []);
                         setStatusMessage("✅ Extracted text is ready. Loading from S3...");
 
-                        const bodyText = await getDocumentTextFromS3(credentials, doc.textFileKey)
-
+                        const bodyText = await getDocumentTextFromS3(credentials!, doc.textFileKey);
                         setText(bodyText);
                         setStatusMessage("Extracted text loaded.");
                         onFetchComplete();
+                        break;
+                    } else if (doc.status === "failed") {
+                        setStatusMessage("❌ Document processing failed");
                         break;
                     } else {
                         setStatusMessage(`Waiting... Current status: ${doc.status}`);
@@ -87,19 +75,25 @@ export const DocumentViewer: React.FC<ViewerProps> = ({
         return () => {
             cancelled = true;
         };
-    }, [shouldFetch]);
+    }, [uploadCompleted, documentId, idToken, identityId, credentials, setUploadCompleted]);
 
     const handleFinalize = async () => {
+        if (!idToken || !identityId || !documentId) return;
+
         setFinalizing(true);
         setLoading(true);
 
         try {
             await finalizeDocument(identityId, documentId, idToken, text, filePath, tags);
+            resetDocumentState();
             setStatusMessage("Document finalized successfully.");
         } catch (err) {
             console.error("Finalization error:", err);
             setStatusMessage("Failed to finalize document.");
         } finally {
+            setText("");
+            setFilePath("")
+            setTags([])
             setFinalizing(false);
             setLoading(false);
         }
@@ -116,7 +110,6 @@ export const DocumentViewer: React.FC<ViewerProps> = ({
 
     return (
         <div className="relative bg-white rounded-xl shadow-md p-6 space-y-6 min-h-[600px]">
-            {/* Loading Overlay */}
             {(loading || finalizing) && (
                 <div className="absolute inset-0 bg-white/40 backdrop-blur-sm z-10 flex flex-col items-center justify-center gap-3 rounded-xl">
                     <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -135,7 +128,7 @@ export const DocumentViewer: React.FC<ViewerProps> = ({
                         type="text"
                         value={filePath}
                         onChange={(e) => setFilePath(e.target.value)}
-                        placeholder="/folder/file.txt"
+                        placeholder="/folder/filename.txt"
                         className="w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
                         disabled={loading}
                     />

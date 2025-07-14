@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { signUp } from "../../api/auth";
+import { signUp } from "../api/auth";
 
 export const SignupForm: React.FC = () => {
     const [username, setUsername] = useState("");
