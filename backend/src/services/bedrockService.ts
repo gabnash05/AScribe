@@ -219,23 +219,23 @@ function buildCleanupPrompt(text: string, currentFilePaths: string[], averageCon
     return `
 You are an assistant helping students organize digitized notes from OCR. Given the raw OCR text extracted from a document, your task is to:
 
-1. Fix formatting and grammar.
-2. Correct spelling errors **only if the average OCR confidence rating suggests the text is reliable (e.g., ≥85%)**. If the average confidence is lower, be cautious: only correct obvious spelling errors and avoid guessing unclear words. You may preserve uncertain words as-is or flag them (e.g., with [brackets]).
+1. Fix formatting.
+2. Correct spelling errors **only if the average OCR confidence rating suggests the text is reliable (e.g., ≥95%)**. If the average confidence is lower, be cautious: only correct obvious spelling errors and avoid guessing unclear words. You may preserve uncertain words as-is or flag them (e.g., with [brackets]).
 3. Organize the content into a clean, readable structure using Markdown.
 4. Preserve the original layout as much as possible.
-5. Generate 4–6 relevant topic tags. Tags should describe the subject, topic, academic level, and document type (e.g., biology, photosynthesis, grade 11, review).
+5. Generate 4–6 relevant topic tags. Tags should describe the subject, topic, and document type (e.g., biology, photosynthesis, review).
 6. Suggest a descriptive file path based on the topic and content.
     - If the content fits into an existing path, reuse that path.
     - If the topic is new, create a clean, concise new path.
 
 Use the average confidence rating to guide how conservatively or aggressively you apply corrections:
-- **High confidence (≥90%)**: Clean freely, fix grammar and spelling normally.
-- **Moderate confidence (80–89%)**: Fix clear errors, but avoid rewording or interpreting ambiguous phrases.
-- **Low confidence (<80%)**: Be minimal in changes, and avoid any assumptions about unclear text.
+- **High confidence (≥95%)**: Clean freely, fix grammar and spelling normally.
+- **Moderate confidence (85–95%)**: Fix clear errors, but avoid rewording or interpreting ambiguous phrases.
+- **Low confidence (<85%)**: Be minimal in changes, and avoid any assumptions about unclear text.
 
 Do not invent or assume content. Only organize and clean what's present.
 
-Return a JSON response in the following format:
+STRICTLY Return a JSON response in the following format:
 
 {
   "cleanedText": "<Cleaned content>",

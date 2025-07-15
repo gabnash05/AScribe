@@ -43,14 +43,41 @@ export class AuthStack extends Stack {
                 }
             },
             userVerification: {
-                emailSubject: 'Verify your email for AScribe',
-                emailBody: 'Hello {username},\n\nPlease verify your email by clicking on the following link: {##Verify Email##}',
+                emailSubject: 'AScribe: Verify Your Email Address',
+                emailBody: `
+                    <html>
+                        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #2c3e50; background-color: #f9f9f9; padding: 40px;">
+                            <table style="max-width: 600px; margin: auto; background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
+                                <tr>
+                                    <td>
+                                        <h2 style="color: #1B73D3; margin-bottom: 20px;">Welcome to AScribe!</h2>
+                                        <p style="margin-bottom: 16px;">Thank you for signing up. To complete your registration, please verify your email address by clicking the link below:</p>
+                                        <p style="word-break: break-all; font-size: 14px; color: #555;">{##Verify Email##}</p>
+                                        <p style="margin-top: 32px;">Thank you,<br/>The AScribe Team</p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </body>
+                    </html>
+                `,
                 emailStyle: VerificationEmailStyle.LINK,
             },
             userInvitation: {
-                emailSubject: 'You have been invited to AScribe',
-                emailBody: 'Hello {username},\n\nYou have been invited to join AScribe. Please use the following temporary password to log in: {####}',
-            }
+                emailSubject: 'AScribe Invitation: Your Account Details',
+                emailBody: `
+                    <html>
+                        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                            <h2 style="color: #D5AD36;">Hello {username},</h2>
+                            <p>You have been invited to join <strong>AScribe</strong>, a platform for intelligent document management and analysis.</p>
+                            <p>Your temporary password is:</p>
+                            <p style="font-size: 1.2em; font-weight: bold; color: #1B73D3;">{####}</p>
+                            <p>Please log in using this password and update your credentials at your earliest convenience.</p>
+                            <p>If you have any issues accessing your account, feel free to reach out to our support team.</p>
+                            <p>Welcome aboard,<br/>The AScribe Team</p>
+                        </body>
+                    </html>
+                `,
+            },
         });
 
         this.userPool.addDomain('AScribeUserPoolDomain', {

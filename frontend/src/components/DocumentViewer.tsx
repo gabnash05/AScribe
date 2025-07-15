@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { getDocument, finalizeDocument } from "../api/documents.ts";
 import { getDocumentTextFromS3 } from "../api/s3.ts";
-import MDEditor from '@uiw/react-md-editor';
 import { useAuth } from "../contexts/AuthContext";
 import { useDocument } from "../contexts/DocumentContext";
+
+// Markdown Editor from:
+// https://uiwjs.github.io/react-md-editor/
+import MDEditor from '@uiw/react-md-editor';
 
 export const DocumentViewer = () => {
     const { documentId, uploadCompleted, setUploadCompleted, resetDocumentState } = useDocument();
