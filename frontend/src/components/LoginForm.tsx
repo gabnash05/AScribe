@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { login, getAWSCredentials } from "../api/auth";
+import { FiEye, FiEyeOff } from "react-icons/fi";
 
 interface Props {
     onAuthSuccess: (idToken: string, identityId: string, credentials: any) => void;
@@ -8,6 +9,7 @@ interface Props {
 export const LoginForm: React.FC<Props> = ({ onAuthSuccess }) => {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState("");
 
@@ -37,13 +39,24 @@ export const LoginForm: React.FC<Props> = ({ onAuthSuccess }) => {
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
             />
-            <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-            />
+
+            <div className="relative">
+                <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 pr-10"
+                />
+                <button
+                    type="button"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                    onClick={() => setShowPassword(!showPassword)}
+                    tabIndex={-1}
+                >
+                    {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
+                </button>
+            </div>
 
             <button
                 onClick={handleLogin}
