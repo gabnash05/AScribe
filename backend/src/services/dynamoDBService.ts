@@ -196,7 +196,7 @@ export async function getDocumentStatusFromDynamoDB({ tableName, userId, documen
     }
 }
 
-export async function getDocumentFilePathFromDynamoDB({ tableName, userId }: {tableName: string, userId: string}): Promise<string[]> {
+export async function getDocumentFilePathFromDynamoDB({ tableName, userId }: {tableName: string, userId: string}): Promise<{ documentId: string; filePath: string }[]> {
     try {
         const command = new QueryCommand({
             TableName: tableName,
@@ -205,16 +205,20 @@ export async function getDocumentFilePathFromDynamoDB({ tableName, userId }: {ta
             ExpressionAttributeValues: {
                 ':uid': { S: userId },
             },
-            ProjectionExpression: 'filePath'
+            ProjectionExpression: 'documentId, filePath'
         })
 
         const response = await dynamoDBClient.send(command);
 
         if (!response.Items || response.Items.length === 0) return [];
 
-        return response.Items
-            .map(item => item.filePath?.S)
-            .filter((path): path is string => !!path);
+        return response.Items.map((item) => {
+            const record = unmarshall(item);
+            return {
+                documentId: record.documentId,
+                filePath: record.filePath
+        };
+    });
 
     } catch (error) {
         if (error instanceof DynamoDBServiceException) {

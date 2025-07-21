@@ -48,13 +48,18 @@ export async function finalizeDocument(
     return res.data;
 }
 
+export interface DocumentPathInfo {
+    filePath: string;
+    documentId: string;
+}
+
 export async function getDocumentFilePaths({
     userId,
     idToken,
 }: {
     userId: string;
     idToken: string;
-}): Promise<string[]> {
+}): Promise<DocumentPathInfo[]> {
     const url = buildUrl(`documents/${userId}/filePaths`);
 
     try {
@@ -65,13 +70,18 @@ export async function getDocumentFilePaths({
             },
         });
 
-        const filePaths = response.data?.filePaths;
+        const items = response.data?.filePaths;
 
-        if (!Array.isArray(filePaths)) {
+        if (!Array.isArray(items)) {
             throw new Error("Invalid response: filePaths should be an array");
         }
 
-        return filePaths.filter((path: unknown): path is string => typeof path === "string");
+        const validItems: DocumentPathInfo[] = items.filter(
+            (item: any): item is DocumentPathInfo =>
+                typeof item?.filePath === "string" && typeof item?.documentId === "string"
+        );
+
+        return validItems;
     } catch (error) {
         if (axios.isAxiosError(error)) {
             const apiError = error.response?.data?.error || error.message;

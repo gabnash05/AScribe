@@ -1,58 +1,78 @@
 import { useState, useEffect } from "react";
 import { FaTimes, FaEdit, FaTrash, FaQuestion } from "react-icons/fa";
-import MDEditor from '@uiw/react-md-editor';
+import MDEditor from "@uiw/react-md-editor";
 import { getDocumentTextFromS3 } from "../api/s3";
-import { deleteDocumentFromDynamoDB } from "../api/documents";
+import { deleteDocumentFromDynamoDB, getDocument } from "../api/documents";
 import ConfirmationDialog from "./ConfirmationDialog";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
-export default function FileViewerModal({
-    filePath,
-    onClose,
-}: {
+interface DocumentData {
+    documentId: string;
+    userId: string;
+    filePath: string;
+    tags?: string[];
+    createdAt?: string;
+    [key: string]: any;
+}
+
+interface FileViewerModalProps {
+    documentId: string;
     filePath: string;
     onClose: () => void;
-}) {
-    const { credentials, identityId } = useAuth();
+}
+
+export default function FileViewerModal({ documentId, filePath, onClose }: FileViewerModalProps) {
+    const { credentials, identityId, idToken } = useAuth();
     const [content, setContent] = useState<string | undefined>();
     const [isEditing, setIsEditing] = useState(false);
     const [draft, setDraft] = useState("");
+    const [documentData, setDocumentData] = useState<DocumentData | null>(null);
     const [showDelete, setShowDelete] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
-        async function fetchText() {
-            const txt = await getDocumentTextFromS3(credentials!, filePath);
-            setContent(txt);
-            setDraft(txt);
+        async function fetchDocumentDetails() {
+            try {
+                if (!documentId || !identityId || !idToken || !credentials) {
+                    throw new Error("Missing identifiers for fetching document.");
+                }
+
+                const doc = await getDocument(identityId, documentId, idToken);
+                const text = await getDocumentTextFromS3(credentials, filePath);
+
+                setDocumentData(doc);
+                setContent(text);
+                setDraft(text);
+            } catch (err) {
+                console.error("Failed to fetch document data:", err);
+            }
         }
-        fetchText();
-    }, [filePath, credentials]);
+
+        fetchDocumentDetails();
+    }, [documentId, filePath, credentials, identityId, idToken]);
 
     const handleSave = () => {
-        // Save changes logic here (e.g. call update API)
+        // Placeholder: Save edited markdown content
         setContent(draft);
         setIsEditing(false);
     };
 
     const confirmDelete = async () => {
         try {
-            const documentId = filePath.split("/").pop()?.split(".")[0]; // extract from filePath if stored like `documents/userId/documentId.txt`
-            if (!documentId) {
-                throw new Error("Could not extract documentId from file path.");
+            if (!documentId || !identityId) {
+                throw new Error("Missing documentId or identityId.");
             }
 
-            await deleteDocumentFromDynamoDB(documentId, identityId!);
+            await deleteDocumentFromDynamoDB(documentId, identityId);
             setShowDelete(false);
             onClose();
         } catch (err) {
             console.error("Failed to delete document:", err);
-            // optionally show a toast or alert here
         }
     };
 
-  return (
+    return (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg w-3/4 max-w-xl p-6 relative space-y-4">
                 <button
@@ -61,51 +81,62 @@ export default function FileViewerModal({
                 >
                     <FaTimes />
                 </button>
+
                 <h2 className="text-xl font-bold text-gray-800">
                     {filePath.split("/").pop()}
                 </h2>
 
+                {documentData && (
+                    <div className="text-sm text-gray-500 space-y-1">
+                        <p><strong>Document ID:</strong> {documentData.documentId}</p>
+                        <p><strong>Created:</strong> {new Date(documentData.createdAt || "").toLocaleString()}</p>
+                        {documentData.tags?.length! > 0 && (
+                            <p><strong>Tags:</strong> {documentData.tags!.join(", ")}</p>
+                        )}
+                    </div>
+                )}
+
                 {isEditing ? (
-                <>
-                    <div className="flex justify-end space-x-2">
-                        <button onClick={() => setIsEditing(false)} className="text-gray-600 hover:underline">
-                            Cancel
+                    <>
+                        <div className="flex justify-end space-x-2">
+                            <button onClick={() => setIsEditing(false)} className="text-gray-600 hover:underline">
+                                Cancel
+                            </button>
+                        </div>
+                        <MDEditor value={draft} onChange={(val) => setDraft(val || "")} height={300} />
+                        <button
+                            onClick={handleSave}
+                            className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
+                        >
+                            Save
                         </button>
-                    </div>
-                    <MDEditor value={draft} onChange={(value) => setDraft(value || "")} height={300} />
-                    <button
-                        onClick={handleSave}
-                        className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
-                    >
-                    Save
-                    </button>
-                </>
+                    </>
                 ) : (
-                <>
-                    <div className="prose max-w-none overflow-auto">
-                        <MDEditor.Markdown source={content || "Loading..."} />
-                    </div>
-                    <div className="flex justify-end space-x-3">
-                        <button
-                            onClick={() => setIsEditing(true)}
-                            className="bg-yellow-500 text-white px-3 py-2 rounded hover:bg-yellow-600 flex items-center gap-2"
-                        >
-                            <FaEdit /> Edit
-                        </button>
-                        <button
-                            onClick={() => setShowDelete(true)}
-                            className="bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 flex items-center gap-2"
-                        >
-                            <FaTrash /> Delete
-                        </button>
-                        <button
-                            onClick={() => navigate(`/questions/${filePath}`)}
-                            className="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600 flex items-center gap-2"
-                        >
-                            <FaQuestion /> Questions
-                        </button>
-                    </div>
-                </>
+                    <>
+                        <div className="prose max-w-none overflow-auto">
+                            <MDEditor.Markdown source={content || "Loading..."} />
+                        </div>
+                        <div className="flex justify-end space-x-3">
+                            <button
+                                onClick={() => setIsEditing(true)}
+                                className="bg-yellow-500 text-white px-3 py-2 rounded hover:bg-yellow-600 flex items-center gap-2"
+                            >
+                                <FaEdit /> Edit
+                            </button>
+                            <button
+                                onClick={() => setShowDelete(true)}
+                                className="bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 flex items-center gap-2"
+                            >
+                                <FaTrash /> Delete
+                            </button>
+                            <button
+                                onClick={() => navigate(`/questions/${documentId}`)}
+                                className="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600 flex items-center gap-2"
+                            >
+                                <FaQuestion /> Questions
+                            </button>
+                        </div>
+                    </>
                 )}
 
                 {showDelete && (

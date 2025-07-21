@@ -7,9 +7,7 @@ import { getDocumentFilePathFromDynamoDB } from '../../services/dynamoDBService'
 
 const DOCUMENTS_TABLE = process.env.DOCUMENTS_TABLE!;
 
-export const handler = async (
-    event: APIGatewayProxyEventV2
-): Promise<APIGatewayProxyResultV2> => {
+export const handler = async (event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> => {
     const userId = event.pathParameters?.userId;
 
     if (!userId) {

@@ -2,31 +2,41 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getDocumentFilePaths } from "../api/documents";
 import { useAuth } from "../contexts/AuthContext";
+
+import { buildFileTree } from "../utils/buildFileTree";
 import FolderTree from "../components/FolderTree";
 import SearchBar from "../components/SearchBar";
 import FileViewerModal from "../components/FileViewerModal";
 
 export default function ExplorePage() {
     const [tree, setTree] = useState<any>({});
-    const [activeFile, setActiveFile] = useState<string | null>(null);
+    const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
+    const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
     const { identityId, idToken } = useAuth();
 
     useEffect(() => {
         async function fetchPaths() {
-            if (!identityId) {
-                return <div className="text-center text-gray-500 py-20">Loading identity...</div>;
+            if (!identityId) return;
+
+            try {
+                const fileEntries = await getDocumentFilePaths({
+                    userId: identityId,
+                    idToken: idToken!,
+                });
+
+                setTree(buildFileTree(fileEntries));
+            } catch (error) {
+                console.error("Failed to fetch file paths:", error);
             }
-
-            const paths = await getDocumentFilePaths({
-                userId: identityId!,
-                idToken: idToken!,
-            });
-
-            setTree(buildFileTree(paths));
         }
 
         fetchPaths();
-    }, []);
+    }, [identityId, idToken]);
+
+    function openFileViewer(filePath: string, documentId: string) {
+        setActiveFilePath(filePath);
+        setActiveDocumentId(documentId);
+    }
 
     return (
         <div className="min-h-screen bg-gray-100 py-12 px-4">
@@ -40,34 +50,27 @@ export default function ExplorePage() {
                         Back to Menu
                     </Link>
                 </header>
-                <SearchBar />
-                <div className="bg-white mt-6 rounded-xl shadow-md p-6 overflow-x-auto">
-                    <FolderTree tree={tree} onFileSelect={setActiveFile} />
 
-                    {activeFile && (
+                <SearchBar />
+
+                <div className="bg-white mt-6 rounded-xl shadow-md p-6 overflow-x-auto">
+                    <FolderTree
+                        tree={tree}
+                        onFileSelect={(filePath, documentId) => openFileViewer(filePath, documentId)}
+                    />
+
+                    {activeFilePath && activeDocumentId && (
                         <FileViewerModal
-                            filePath={activeFile}
-                            onClose={() => setActiveFile(null)}
+                            filePath={activeFilePath}
+                            documentId={activeDocumentId}
+                            onClose={() => {
+                                setActiveFilePath(null);
+                                setActiveDocumentId(null);
+                            }}
                         />
                     )}
                 </div>
             </div>
         </div>
     );
-}
-
-// Helper to build a nested file tree
-function buildFileTree(paths: string[]) {
-    const root: any = {};
-    for (const path of paths) {
-        const parts = path.split('/');
-        let current = root;
-        parts.forEach((part, index) => {
-            if (!current[part]) {
-                current[part] = index === parts.length - 1 ? null : {};
-            }
-            current = current[part];
-        });
-    }
-    return root;
 }

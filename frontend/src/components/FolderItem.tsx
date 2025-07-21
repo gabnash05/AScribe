@@ -6,7 +6,7 @@ interface FolderItemProps {
     name: string;
     path: string;
     childrenTree: any;
-    onFileSelect: (path: string) => void;
+    onFileSelect: (path: string, documentId: string) => void;
 }
 
 export default function FolderItem({
@@ -24,13 +24,11 @@ export default function FolderItem({
                 className="cursor-pointer font-medium hover:bg-gray-200 px-1 py-0.5 rounded"
             >
                 {open
-                    ? <FaFolderOpen className="mr-2 text-yellow-400" size={40}/>
-                    : <FaFolder className="mr-2 text-yellow-400" size={40} />
-                }
-                
+                    ? <FaFolderOpen className="mr-2 text-yellow-400" size={40} />
+                    : <FaFolder className="mr-2 text-yellow-400" size={40} />}
                 <span className="text-1xl">{name}</span>
             </div>
-            
+
             {open && (
                 <FolderTree
                     tree={childrenTree}
