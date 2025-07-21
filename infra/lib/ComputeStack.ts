@@ -30,6 +30,7 @@ export class ComputeStack extends Stack {
     public readonly finalizeUploadLambda: NodejsFunction;
     public readonly getDocumentLambda: NodejsFunction;
     public readonly getDocumentsLambda: NodejsFunction;
+    public readonly getDocumentFilePathsLambda: NodejsFunction;
     public readonly updateDocumentLambda: NodejsFunction;
     public readonly deleteDocumentLambda: NodejsFunction;
     public readonly updateTagsLambda: NodejsFunction;
@@ -145,6 +146,7 @@ export class ComputeStack extends Stack {
         this.processUploadedFileLambda = this.createLambda('processUploadedFile', 'Documents', lambdaPropsWithBedrockTextractSearch);            this.finalizeUploadLambda = this.createLambda('finalizeUpload', 'Documents', lambdaPropsWithBedrockAndSearch);
         this.getDocumentLambda = this.createLambda('getDocument', 'Documents', lambdaProps);
         this.getDocumentsLambda = this.createLambda('getDocuments', 'Documents', lambdaProps);
+        this.getDocumentFilePathsLambda = this.createLambda('getDocumentFilePaths', 'Documents', lambdaProps);
         this.updateDocumentLambda = this.createLambda('updateDocument', 'Documents', lambdaProps);
         this.deleteDocumentLambda = this.createLambda('deleteDocument', 'Documents', lambdaProps);
         this.updateTagsLambda = this.createLambda('updateTags', 'Documents', lambdaPropsWithSearch);
@@ -202,6 +204,7 @@ export class ComputeStack extends Stack {
         documentsTable.grantReadWriteData(this.finalizeUploadLambda);
         documentsTable.grantReadData(this.getDocumentLambda);
         documentsTable.grantReadData(this.getDocumentsLambda);
+        documentsTable.grantReadData(this.getDocumentFilePathsLambda);
         documentsTable.grantReadWriteData(this.updateDocumentLambda);
         documentsTable.grantReadWriteData(this.deleteDocumentLambda);
         documentsTable.grantReadWriteData(this.updateTagsLambda);

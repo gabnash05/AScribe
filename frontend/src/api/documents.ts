@@ -47,3 +47,62 @@ export async function finalizeDocument(
 
     return res.data;
 }
+
+export async function getDocumentFilePaths({
+    userId,
+    idToken,
+}: {
+    userId: string;
+    idToken: string;
+}): Promise<string[]> {
+    const url = buildUrl(`documents/${userId}/filePaths`);
+
+    try {
+        const response = await axios.get(url, {
+            headers: {
+                Authorization: `Bearer ${idToken}`,
+                "Content-Type": "application/json",
+            },
+        });
+
+        const filePaths = response.data?.filePaths;
+
+        if (!Array.isArray(filePaths)) {
+            throw new Error("Invalid response: filePaths should be an array");
+        }
+
+        return filePaths.filter((path: unknown): path is string => typeof path === "string");
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const apiError = error.response?.data?.error || error.message;
+            throw new Error(`Failed to fetch file paths: ${apiError}`);
+        }
+
+        throw new Error(
+            `Unexpected error during document file path fetch: ${
+                error instanceof Error ? error.message : "Unknown error"
+            }`
+        );
+    }
+}
+
+export async function deleteDocumentFromDynamoDB(documentId: string, userId: string): Promise<void> {
+    try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/documents/${userId}/${documentId}`, {
+            method: "DELETE",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to delete document.');
+        }
+
+        console.log(`Document ${documentId} deleted successfully`);
+    } catch (error) {
+        console.error("Error deleting document:", error);
+        throw error;
+    }
+}

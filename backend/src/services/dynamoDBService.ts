@@ -36,8 +36,6 @@ import {
     GetExtractedTextParams,
     ExtractedTextRecord,
 } from "../types/dynamoDB-types";
-import { text } from "stream/consumers";
-import { table } from "console";
 
 const dynamoDBClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 
@@ -819,6 +817,48 @@ export async function deleteQuestionFromDynamoDB({ tableName, documentId, questi
             throw new Error(`Failed to delete question from DynamoDB: ${error.message}`);
         }
         throw new Error(`Unexpected error during question deletion: ${
+            error instanceof Error ? error.message : 'Unknown error'
+        }`);
+    }
+}
+
+export async function deleteQuestionsByDocumentIdFromDynamoDB({ tableName, documentId }: { tableName: string, documentId: string }): Promise<DynamoDBDeleteResult> {
+    try {
+        const command = new QueryCommand({
+            TableName: tableName,
+            KeyConditionExpression: 'documentId = :documentId',
+            ExpressionAttributeValues: {
+                ':documentId': { S: documentId }
+            }
+        });
+
+        const response = await dynamoDBClient.send(command);
+
+        if (!response.Items || response.Items.length === 0) {
+            return { success: true, message: 'No questions found for the document' };
+        }
+
+        const deleteCommands = response.Items.map(item => new DeleteItemCommand({
+            TableName: tableName,
+            Key: {
+                documentId: { S: item.documentId.S! },
+                questionsId: { S: item.questionsId.S! }
+            }
+        }));
+
+        for (const deleteCommand of deleteCommands) {
+            await dynamoDBClient.send(deleteCommand);
+        }
+
+        return {
+            success: true,
+            message: 'Questions deleted successfully',
+        };
+    } catch (error) {
+        if (error instanceof DynamoDBServiceException) {
+            throw new Error(`Failed to delete questions by document ID from DynamoDB: ${error.message}`);
+        }
+        throw new Error(`Unexpected error during question deletion by document ID: ${
             error instanceof Error ? error.message : 'Unknown error'
         }`);
     }

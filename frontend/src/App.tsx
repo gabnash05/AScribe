@@ -18,7 +18,7 @@ export default function App() {
                         <Route path="/auth" element={<AuthPage />} />
 
                         {/* Protected routes wrapper */}
-                        <Route element={<ProtectedRoute />}>
+                        <Route element={<ProtectedRoute />}> 
                             <Route path="/dashboard" element={<DashboardPage />} />
                             <Route path="/scan" element={<ScanPage />} />
                             <Route path="/explore" element={<ExplorePage />} />

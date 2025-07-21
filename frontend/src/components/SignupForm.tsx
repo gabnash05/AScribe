@@ -19,7 +19,7 @@ export const SignupForm: React.FC = () => {
             setStatus("✅ Sign-up successful! Confirm via email.");
         } catch (err) {
             console.error(err);
-            setStatus("❌ Sign-up failed. Try again.");
+            setStatus(`❌ Sign-up failed. ${err instanceof Error ? err.message : "Unknown error"}`);
         } finally {
             setLoading(false);
         }

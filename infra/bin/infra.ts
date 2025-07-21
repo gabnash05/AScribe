@@ -87,6 +87,7 @@ const apiGatewayStack = new APIGatewayStack(app, `AScribeApiGatewayStack-${stage
         finalizeUploadLambda: computeStack.finalizeUploadLambda,
         getDocumentLambda: computeStack.getDocumentLambda,
         getDocumentsLambda: computeStack.getDocumentsLambda,
+        getDocumentFilePathsLambda: computeStack.getDocumentFilePathsLambda,
         updateDocumentLambda: computeStack.updateDocumentLambda,
         deleteDocumentLambda: computeStack.deleteDocumentLambda,
         getExtractedTextLambda: computeStack.getExtractedTextLambda,
@@ -119,6 +120,7 @@ const criticalLambdas = [
 const regularLambdas = [
     computeStack.getDocumentLambda,
     computeStack.getDocumentsLambda,
+    computeStack.getDocumentFilePathsLambda,
     computeStack.updateDocumentLambda,
     computeStack.deleteDocumentLambda,
     computeStack.getExtractedTextLambda,

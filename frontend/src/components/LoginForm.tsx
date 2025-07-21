@@ -24,7 +24,7 @@ export const LoginForm: React.FC<Props> = ({ onAuthSuccess }) => {
             onAuthSuccess(idToken!, identityId!, credentials);
         } catch (err) {
             console.error(err);
-            setStatus("❌ Login failed. Check your credentials.");
+            setStatus(`❌ Login failed. ${err instanceof Error ? err.message : "Unknown error"}`);
         } finally {
             setLoading(false);
         }

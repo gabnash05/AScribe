@@ -15,6 +15,7 @@ interface APIGatewayStackProps extends AscribeAppProps {
         finalizeUploadLambda: IFunction;
         getDocumentLambda: IFunction;
         getDocumentsLambda: IFunction;
+        getDocumentFilePathsLambda: IFunction;
         updateDocumentLambda: IFunction;
         deleteDocumentLambda: IFunction;
         getExtractedTextLambda: IFunction;
@@ -49,6 +50,7 @@ export class APIGatewayStack extends Stack {
             finalizeUploadLambda,
             getDocumentLambda,
             getDocumentsLambda,
+            getDocumentFilePathsLambda,
             updateDocumentLambda,
             deleteDocumentLambda,
             getExtractedTextLambda,
@@ -83,6 +85,9 @@ export class APIGatewayStack extends Stack {
 
         // Documents 
         this.addLambdaRoute('documents', 'GET', getDocumentsLambda, authorizer, props);
+
+        // Document File Paths
+        this.addLambdaRoute('documents/{userId}/filePaths', 'GET', getDocumentFilePathsLambda, authorizer, props);
 
         // Search
         this.addLambdaRoute('documents/{userId}/search', 'POST', searchDocumentsLambda, authorizer, props);
