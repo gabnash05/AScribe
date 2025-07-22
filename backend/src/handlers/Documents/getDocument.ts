@@ -43,7 +43,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
             };
         }
 
-        if (document.status !== 'cleaned') {
+        if (document.status !== 'cleaned' && document.status !== 'verified') {
             return {
                 statusCode: 200,
                 headers: {

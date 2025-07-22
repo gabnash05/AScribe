@@ -62,7 +62,7 @@ export async function getDocumentFilePaths({
 }): Promise<DocumentPathInfo[]> {
     const url = buildUrl(`documents/${userId}/filePaths`);
 
-    try {
+    try {        
         const response = await axios.get(url, {
             headers: {
                 Authorization: `Bearer ${idToken}`,
@@ -82,6 +82,7 @@ export async function getDocumentFilePaths({
         );
 
         return validItems;
+        
     } catch (error) {
         if (axios.isAxiosError(error)) {
             const apiError = error.response?.data?.error || error.message;

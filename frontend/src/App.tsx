@@ -6,6 +6,8 @@ import AuthPage from "./pages/AuthPage";
 import DashboardPage from "./pages/DashboardPage";
 import ScanPage from "./pages/ScanPage";
 import ExplorePage from "./pages/ExplorePage";
+import QuestionsPage from "./pages/QuestionsPage";
+
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 export default function App() {
@@ -18,10 +20,11 @@ export default function App() {
                         <Route path="/auth" element={<AuthPage />} />
 
                         {/* Protected routes wrapper */}
-                        <Route element={<ProtectedRoute />}> 
+                        <Route element={<ProtectedRoute />}>
                             <Route path="/dashboard" element={<DashboardPage />} />
                             <Route path="/scan" element={<ScanPage />} />
                             <Route path="/explore" element={<ExplorePage />} />
+                            <Route path="/questions/:documentId" element={<QuestionsPage />} />
                         </Route>
 
                         {/* Catch-all redirect */}
