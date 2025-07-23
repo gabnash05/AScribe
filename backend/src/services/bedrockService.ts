@@ -133,73 +133,30 @@ export async function generateQuestion({
         }
 
         const prompt = buildQuestionsPrompt(cleanedText, questionCount);
-
+        
         const input: InvokeModelCommandInput = {
             modelId,
             contentType: 'application/json',
             accept: 'application/json',
             body: Buffer.from(JSON.stringify({
-                messages: [
-                    {
-                        role: 'user',
-                        content: [{ text: prompt }]
-                    }
-                ],
+                schemaVersion: "messages-v1",
+                messages: [{
+                    role: "user",
+                    content: [{ text: prompt }]
+                }],
                 inferenceConfig: {
                     maxTokens: 500,
                     temperature: 0.7,
-                    stopSequences: ['</response>']
+                    topP: 0.9,
+                    topK: 20
                 }
             }))
         };
 
-        const command = new InvokeModelCommand(input);
-
-        const response = await bedrockClient.send(command);
+        const response = await bedrockClient.send(new InvokeModelCommand(input));
         const decoded = JSON.parse(new TextDecoder().decode(response.body));
-        // MAY NOT WORK. REFER TO cleanExtractedText FUNCTION
-        const completionText = decoded?.outputs?.[0]?.text || '';
-
-        const jsonMatch = completionText.match(/\[[\s\S]*\]/);
-        if (!jsonMatch) {
-            throw new Error('No JSON array found in response');
-        }
-
-        const questions: QuestionItem[] = JSON.parse(jsonMatch[0]);
-
-        const validatedQuestions: QuestionItem[] = [];
-        for (const q of questions) {
-            if (typeof q !== 'object' || q === null) continue;
-
-            const validatedQuestion: QuestionItem = {
-                tags: Array.isArray(q.tags)
-                    ? q.tags.filter((tag: unknown) => typeof tag === 'string').map(tag => tag.trim())
-                    : [],
-                question: typeof q.question === 'string' ? q.question.trim() : '',
-                answer: typeof q.answer === 'string' ? q.answer.trim() : '',
-                choices: Array.isArray(q.choices)
-                    ? q.choices.filter((c: unknown) => typeof c === 'string').map(c => c.trim())
-                    : []
-            };
-
-            if (
-                !validatedQuestion.question ||
-                !validatedQuestion.answer ||
-                validatedQuestion.choices.length < 2
-            ) continue;
-
-            if (!validatedQuestion.choices.includes(validatedQuestion.answer)) {
-                validatedQuestion.choices.push(validatedQuestion.answer);
-            }
-
-            validatedQuestions.push(validatedQuestion);
-        }
-
-        if (validatedQuestions.length === 0) {
-            throw new Error('No valid questions were generated');
-        }
-
-        return { questions: validatedQuestions };
+        
+        return parseNovaQuestionResponse(decoded);
 
     } catch (error) {
         if (error instanceof BedrockRuntimeServiceException) {
@@ -274,27 +231,40 @@ ${cleanedText}
 }
 
 export function buildQuestionsPrompt(cleanedText: string, numQuestions: number): string {
-    return `
-You are a knowledgeable educational assistant tasked with generating exactly ${numQuestions} high-quality, non-repetitive review questions based on the following cleaned notes. Each question should test important concepts, be clear and concise, and cover different aspects of the material.
+    return `You are an expert educational content generator. Create exactly ${numQuestions} high-quality multiple choice questions in JSON format.
 
-For each question, provide a JSON object with these fields:
-
+STRICT REQUIREMENTS:
+1. Return ONLY a valid JSON array of question objects
+2. Each question must follow this exact structure:
 {
-  "tags": ["tag1", "tag2", "tag3"],  // Include 3 to 5 relevant, specific topic tags
-  "question": "The question text",   // Clear, unambiguous question
-  "answer": "The correct answer",    // Accurate and concise
-  "choices": ["choice1", "choice2", "choice3", "choice4"]  // Multiple choice options including the correct answer, plausible distractors
+  "tags": ["tag1", "tag2"],
+  "question": "What is...?", 
+  "answer": "Correct answer",
+  "choices": ["Option1", "Option2", "Correct answer", "Option3"]
 }
+3. Include the answer in the choices array
+4. All values must be strings
+5. Questions must cover different aspects of the text
+6. Do NOT include any additional commentary or explanation
+7. Do not repeat questions or answers
+8. Ensure questions are clear, concise, and relevant to the content
 
-Do not repeat questions or answers. Avoid trivial or overly similar questions.
+EXAMPLE OUTPUT:
+[
+  {
+    "tags": ["biology", "cells"],
+    "question": "What is the powerhouse of the cell?",
+    "answer": "Mitochondria",
+    "choices": ["Nucleus", "Ribosome", "Mitochondria", "Golgi apparatus"]
+  }
+]
 
-Here is the cleaned source text:
+Generate questions based on this text:
 """
 ${cleanedText}
 """
 
-Return a valid JSON array of question objects only, with no additional commentary or explanation.
-</response>`;
+IMPORTANT: Your response must be parseable as JSON and should contain ONLY the array of question objects.`;
 }
 
 function parseBedrockCleanupResponse(responseJson: any): CleanExtractedTextWithBedrockResult {
@@ -347,5 +317,57 @@ function parseBedrockCleanupResponse(responseJson: any): CleanExtractedTextWithB
         throw new Error(`Failed to parse Bedrock cleanup response: ${
             error instanceof Error ? error.message : 'Invalid response format'
         }\nRaw Claude response: ${JSON.stringify(responseJson).slice(0, 300)}...`);
+    }
+}
+
+function parseNovaQuestionResponse(responseJson: any): GenerateQuestionResult {
+    try {
+        // Nova's response structure
+        const contentArray = responseJson?.output?.message?.content;
+        if (!Array.isArray(contentArray)) {
+            console.error('Invalid Nova response structure:', JSON.stringify(responseJson, null, 2));
+            throw new Error('Missing content array in Nova response');
+        }
+
+        // Extract the complete response text
+        const responseText = contentArray.map(c => c.text).join('\n').trim();
+        
+        // Find the JSON array in the response
+        const jsonStart = responseText.indexOf('[');
+        const jsonEnd = responseText.lastIndexOf(']');
+        
+        const jsonMatch = responseText.match(/\[\s*{[\s\S]*?}\s*]/);
+        if (!jsonMatch) {
+            console.error("No valid JSON array found in response:", responseText);
+            throw new Error("No JSON array found in response");
+        }
+        
+        const jsonString = jsonMatch[0];
+        const questions: QuestionItem[] = JSON.parse(jsonString);
+
+        // Validate and transform questions
+        const validatedQuestions = questions.map(q => ({
+            tags: (Array.isArray(q.tags) ? q.tags : []).map(t => String(t).trim()),
+            question: String(q.question).trim(),
+            answer: String(q.answer).trim(),
+            choices: (Array.isArray(q.choices) ? q.choices : [])
+                .map(c => String(c).trim())
+                .filter(c => c)
+        })).filter(q => 
+            q.question && 
+            q.answer && 
+            q.choices.length >= 2 &&
+            q.choices.includes(q.answer)
+        );
+
+        if (validatedQuestions.length === 0) {
+            throw new Error('No valid questions were generated');
+        }
+
+        return { questions: validatedQuestions };
+
+    } catch (error) {
+        console.error('Parsing error:', error);
+        throw new Error(`Failed to parse questions: ${error instanceof Error ? error.message : 'Invalid format'}`);
     }
 }

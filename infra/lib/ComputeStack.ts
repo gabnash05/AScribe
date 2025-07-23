@@ -193,6 +193,7 @@ export class ComputeStack extends Stack {
         documentBucket.grantRead(this.getExtractedTextLambda);
         documentBucket.grantRead(this.getSummaryLambda);
         documentBucket.grantRead(this.getQuestionsLambda);
+        documentBucket.grantRead(this.createQuestionsLambda);
         documentBucket.grantRead(this.searchDocumentsLambda);
 
         // 

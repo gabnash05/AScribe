@@ -1,12 +1,6 @@
 import axios from "axios";
 
-const REGION = import.meta.env.VITE_AWS_REGION;
-const API_ID = import.meta.env.VITE_API_ID;
-const STAGE = import.meta.env.VITE_STAGE;
-
-function buildUrl(path: string) {
-    return `https://${API_ID}.execute-api.${REGION}.amazonaws.com/${STAGE}/${path}`;
-}
+import { buildUrl } from "../utils/buildUrl";
 
 export async function getDocument(userId: string, documentId: string, idToken: string) {
     const url = buildUrl(`documents/${userId}/${documentId}`);
