@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+
 import { getDocument, finalizeDocument } from "../api/documents.ts";
 import { getDocumentTextFromS3 } from "../api/s3.ts";
 import { useAuth } from "../contexts/AuthContext";
@@ -11,6 +13,7 @@ import MDEditor from '@uiw/react-md-editor';
 export const DocumentViewer = () => {
     const { documentId, uploadCompleted, setUploadCompleted, resetDocumentState } = useDocument();
     const { idToken, identityId, credentials } = useAuth();
+    const navigate = useNavigate();
     
     const [text, setText] = useState<string>("");
     const [filePath, setFilePath] = useState<string>("");
@@ -74,10 +77,7 @@ export const DocumentViewer = () => {
         };
 
         poll();
-
-        return () => {
-            cancelled = true;
-        };
+        
     }, [uploadCompleted, documentId, idToken, identityId, credentials, setUploadCompleted]);
 
     const handleFinalize = async () => {
@@ -90,13 +90,20 @@ export const DocumentViewer = () => {
             await finalizeDocument(identityId, documentId, idToken, text, filePath, tags);
             resetDocumentState();
             setStatusMessage("Document finalized successfully.");
+
+            navigate("/explore", {
+                state: {
+                    filePath: filePath,
+                    documentId: documentId
+                }
+            });
         } catch (err) {
             console.error("Finalization error:", err);
             setStatusMessage("Failed to finalize document.");
         } finally {
             setText("");
-            setFilePath("")
-            setTags([])
+            setFilePath("");
+            setTags([]);
             setFinalizing(false);
             setLoading(false);
         }

@@ -1,19 +1,34 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getDocumentFilePaths } from "../api/documents";
 import { useAuth } from "../contexts/AuthContext";
-
 import { buildFileTree } from "../utils/buildFileTree";
 import FolderTree from "../components/FolderTree";
 import SearchBar from "../components/SearchBar";
 import FileViewerModal from "../components/FileViewerModal";
 
 export default function ExplorePage() {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const incomingFilePath = location.state?.filePath || null;
+    const incomingDocumentId = location.state?.documentId || null;
+    const [expandedPaths, setExpandedPaths] = useState<string[]>([]);
+
     const [tree, setTree] = useState<any>({});
     const [loading, setLoading] = useState<boolean>(true);
     const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
     const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
     const { identityId, idToken } = useAuth();
+
+    // Function to expand paths for a given file path
+    const expandPathForFile = (filePath: string) => {
+        const parts = filePath.split("/");
+        const folders: string[] = [];
+        for (let i = 0; i < parts.length - 1; i++) {
+            folders.push(parts.slice(0, i + 1).join("/"));
+        }
+        setExpandedPaths(folders);
+    };
 
     useEffect(() => {
         async function fetchPaths() {
@@ -29,6 +44,11 @@ export default function ExplorePage() {
 
                 const builtTree = buildFileTree(fileEntries);
                 setTree(builtTree);
+
+                if (incomingFilePath && incomingDocumentId) {
+                    openFileViewer(incomingFilePath, incomingDocumentId);
+                    expandPathForFile(incomingFilePath);
+                }
             } catch (error) {
                 console.error("Failed to fetch file paths:", error);
             } finally {
@@ -37,11 +57,24 @@ export default function ExplorePage() {
         }
 
         fetchPaths();
-    }, [identityId, idToken]);
+    }, [identityId, idToken, incomingFilePath, incomingDocumentId]);
 
     function openFileViewer(filePath: string, documentId: string) {
+        // Update the URL without triggering navigation
+        navigate('.', {
+            state: {
+                filePath,
+                documentId
+            },
+            replace: true
+        });
+        
+        // Set the active file
         setActiveFilePath(filePath);
         setActiveDocumentId(documentId);
+        
+        // Expand the file path in the tree
+        expandPathForFile(filePath);
     }
 
     return (
@@ -70,16 +103,20 @@ export default function ExplorePage() {
                             onFileSelect={(filePath, documentId) =>
                                 openFileViewer(filePath, documentId)
                             }
+                            expandedPaths={expandedPaths}
                         />
                     )}
 
                     {activeFilePath && activeDocumentId && (
                         <FileViewerModal
+                            key={`${activeDocumentId}-${activeFilePath}`} // Force remount when file changes
                             filePath={activeFilePath}
                             documentId={activeDocumentId}
                             onClose={() => {
                                 setActiveFilePath(null);
                                 setActiveDocumentId(null);
+                                // Clear location state without triggering navigation
+                                navigate('.', { state: {}, replace: true });
                             }}
                         />
                     )}

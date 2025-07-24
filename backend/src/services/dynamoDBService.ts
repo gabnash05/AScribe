@@ -407,8 +407,8 @@ export async function saveExtractedTextToDynamoDB({ tableName, extractedTextReco
             item.summaryId = { S: extractedTextRecord.summaryId };
         }
 
-        if (extractedTextRecord.questionsId && extractedTextRecord.questionsId.length > 0) {
-            item.questionsId = { SS: extractedTextRecord.questionsId };
+        if (extractedTextRecord.questionId && extractedTextRecord.questionId.length > 0) {
+            item.questionId = { SS: extractedTextRecord.questionId };
         }
 
         if (typeof extractedTextRecord.tokens === 'number') {
@@ -462,7 +462,7 @@ export async function getExtractedTextInDynamoDB({ tableName, extractedTextId, d
             textFileKey: response.Item.textFileKey.S!,
             averageConfidence: parseFloat(response.Item.averageConfidence.N!),
             summaryId: response.Item.summaryId?.S || undefined,
-            questionsId: response.Item.questionsId?.SS || [],
+            questionId: response.Item.questionId?.SS || [],
             tokens: response.Item.tokens ? parseInt(response.Item.tokens.N!, 10) : undefined
         }
     } catch (error) {
@@ -517,10 +517,10 @@ export async function updateExtractedTextInDynamoDB({ tableName, extractedTextId
             attributeValues[':tokens'] = { N: extractedTextRecord.tokens.toString() };
         }
 
-        if (extractedTextRecord.questionsId !== undefined) {
-            expressionParts.push('#questionsId = :questionsId');
-            attributeNames['#questionsId'] = 'questionsId';
-            attributeValues[':questionsId'] = { SS: extractedTextRecord.questionsId };
+        if (extractedTextRecord.questionId !== undefined) {
+            expressionParts.push('#questionId = :questionId');
+            attributeNames['#questionId'] = 'questionId';
+            attributeValues[':questionId'] = { SS: extractedTextRecord.questionId };
         }
 
         if (expressionParts.length === 0) return {
@@ -703,7 +703,7 @@ export async function saveQuestionToDynamoDB({ tableName, question }: SaveQuesti
             TableName: tableName,
             Item: {
                 documentId: { S: question.documentId },
-                questionsId: { S: question.questionsId },
+                questionId: { S: question.questionId },
                 tags: { SS: question.tags },
                 question: { S: question.question },
                 choices: { SS: question.choices },
@@ -729,7 +729,7 @@ export async function saveQuestionToDynamoDB({ tableName, question }: SaveQuesti
     }
 }
 
-export async function updateQuestionInDynamoDB({ tableName, documentId, questionsId, question }: UpdateQuestionParams): Promise<DynamoDBUpdateResult> {
+export async function updateQuestionInDynamoDB({ tableName, documentId, questionId, question }: UpdateQuestionParams): Promise<DynamoDBUpdateResult> {
     try {
         const expressionParts: string[] = [];
         const attributeValues: Record<string, AttributeValue> = {};
@@ -774,7 +774,7 @@ export async function updateQuestionInDynamoDB({ tableName, documentId, question
             TableName: tableName,
             Key: {
                 documentId: { S: documentId },
-                questionsId: { S: questionsId }
+                questionId: { S: questionId }
             },
             UpdateExpression: `SET ${expressionParts.join(', ')}`,
             ExpressionAttributeNames: attributeNames,
@@ -800,13 +800,13 @@ export async function updateQuestionInDynamoDB({ tableName, documentId, question
     }
 }
 
-export async function deleteQuestionFromDynamoDB({ tableName, documentId, questionsId }: DeleteQuestionParams): Promise<DynamoDBDeleteResult> {
+export async function deleteQuestionFromDynamoDB({ tableName, documentId, questionId }: DeleteQuestionParams): Promise<DynamoDBDeleteResult> {
     try {
         const command = new DeleteItemCommand({
             TableName: tableName,
             Key: {
                 documentId: { S: documentId },
-                questionsId: { S: questionsId }
+                questionId: { S: questionId }
             }
         });
 
@@ -846,7 +846,7 @@ export async function deleteQuestionsByDocumentIdFromDynamoDB({ tableName, docum
             TableName: tableName,
             Key: {
                 documentId: { S: item.documentId.S! },
-                questionsId: { S: item.questionsId.S! }
+                questionId: { S: item.questionId.S! }
             }
         }));
 

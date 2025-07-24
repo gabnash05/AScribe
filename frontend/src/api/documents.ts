@@ -5,15 +5,25 @@ import { buildUrl } from "../utils/buildUrl";
 export async function getDocument(userId: string, documentId: string, idToken: string) {
     const url = buildUrl(`documents/${userId}/${documentId}`);
     
-    const res = await axios.get(url, {
-        headers: { 
-            Authorization: `Bearer ${idToken}`,
-            'Content-Type': 'application/json'
-        },
-    });
-    
-    return res.data;
+    try {
+        const res = await axios.get(url, {
+            headers: { 
+                Authorization: `Bearer ${idToken}`,
+                'Content-Type': 'application/json'
+            },
+        });
+
+        return res.data;
+    } catch (error) {
+        console.error(error);
+        if (axios.isAxiosError(error) && error.response) {
+            throw new Error(`Error ${error.response.status}: ${error.response.data.message || "An error occurred."}`);
+        } else {
+            throw new Error("Network error: Unable to reach the server.");
+        }
+    }
 }
+
 
 export async function finalizeDocument(
     userId: string,

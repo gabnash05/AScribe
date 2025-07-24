@@ -1,15 +1,6 @@
 import { useState } from "react";
 import { FaTimes, FaEdit, FaTrash } from "react-icons/fa";
-
-interface Question {
-    questionId: string;
-    documentId: string;
-    tags?: string[];
-    question: string;
-    choices?: string[];
-    answer: string;
-    createdAt: string;
-}
+import type { Question } from "../api/questions";
 
 interface Props {
     question: Question;

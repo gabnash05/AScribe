@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import FolderTree from "./FolderTree";
 import { FaFolderOpen, FaFolder } from "react-icons/fa";
 
@@ -7,6 +7,7 @@ interface FolderItemProps {
     path: string;
     childrenTree: any;
     onFileSelect: (path: string, documentId: string) => void;
+    expandedPaths: string[];
 }
 
 export default function FolderItem({
@@ -14,22 +15,27 @@ export default function FolderItem({
     path,
     childrenTree,
     onFileSelect,
+    expandedPaths,
 }: FolderItemProps) {
-    const [open, setOpen] = useState(false);
+    const [isOpen, setIsOpen] = useState(() => expandedPaths.includes(path));
+    
+    useEffect(() => {
+        setIsOpen(expandedPaths.includes(path));
+    }, [expandedPaths, path]);
 
     return (
         <li className="mb-1">
             <div
-                onClick={() => setOpen(!open)}
+                onClick={() => setIsOpen(!isOpen)}
                 className="cursor-pointer font-medium hover:bg-gray-200 px-1 py-0.5 rounded"
             >
-                {open
+                {isOpen
                     ? <FaFolderOpen className="mr-2 text-yellow-400" size={40} />
                     : <FaFolder className="mr-2 text-yellow-400" size={40} />}
                 <span className="text-1xl">{name}</span>
             </div>
 
-            {open && (
+            {isOpen && (
                 <FolderTree
                     tree={childrenTree}
                     path={path}

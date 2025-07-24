@@ -38,7 +38,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
             };
         }
 
-        if (!numQuestions || typeof numQuestions !== 'number' || numQuestions < 1 || numQuestions > 20) {
+        if (!numQuestions || typeof numQuestions !== 'number' || numQuestions < 1 || numQuestions > 10) {
             return {
                 statusCode: 400,
                 headers: {
@@ -47,7 +47,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    error: 'Invalid number of questions requested (must be between 1 and 20)',
+                    error: 'Invalid number of questions requested (must be between 1 and 10)',
                 }),
             };
         }
@@ -90,7 +90,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         // Get extracted text metadata
         const extractedText = await getExtractedTextInDynamoDB({
             tableName: EXTRACTED_TEXTS_TABLE_NAME,
-            extractedTextId: document.extractedTextId!,
+            extractedTextId: document.extractedTextId,
             documentId,
         });
 
@@ -143,7 +143,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
             return saveQuestionToDynamoDB({
                 tableName: QUESTIONS_TABLE_NAME,
                 question: {
-                    questionsId: questionId,
+                    questionId: questionId,
                     documentId,
                     tags: q.tags || [],
                     question: q.question,

@@ -1,24 +1,16 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { FaPlus, FaMagic, FaBookOpen, FaQuestionCircle, FaSpinner } from "react-icons/fa";
 import { useAuth } from "../contexts/AuthContext";
 import QuestionCard from "../components/QuestionCard";
 import { getDocumentQuestions, createDocumentQuestions } from "../api/questions";
-
-interface Question {
-    questionId: string;
-    documentId: string;
-    tags?: string[];
-    question: string;
-    choices?: string[];
-    answer: string;
-    createdAt: string;
-}
+import type { Question } from "../api/questions";
 
 export default function QuestionsPage() {
     const { documentId } = useParams();
     const { identityId, idToken } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
 
     const [questions, setQuestions] = useState<Question[]>([]);
     const [loading, setLoading] = useState(true);
@@ -69,6 +61,17 @@ export default function QuestionsPage() {
         }
     };
 
+    const handleBackToExplore = () => {
+        navigate('/explore', {
+            state: {
+                filePath: location.state?.filePath,
+                documentId: location.state?.documentId,
+                // Pass along the expanded paths
+                expandedPaths: location.state?.expandedPaths || []
+            }
+        });
+    };
+
     return (
         <div className="min-h-screen bg-gray-100 py-12 px-6">
             <div className="max-w-4xl mx-auto space-y-8">
@@ -91,7 +94,7 @@ export default function QuestionsPage() {
                             )}
                         </button>
                         <button
-                            onClick={() => navigate(`/documents/${documentId}/questions/new`)}
+                            onClick={handleBackToExplore}
                             className="text-sm bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2"
                         >
                             <FaPlus /> Create
@@ -107,7 +110,13 @@ export default function QuestionsPage() {
 
                 <div className="flex gap-3">
                     <button
-                        onClick={() => navigate(`/documents/${documentId}/quiz`)}
+                        onClick={() => 
+                            navigate(`/documents/${documentId}/quiz`, {
+                                state: {
+                                    filePath: location.state?.filePath // ensure this is passed to enable correct return
+                                }
+                            })
+                        }
                         className="text-sm bg-purple-500 text-white px-3 py-2 rounded hover:bg-purple-600 flex items-center gap-2"
                     >
                         <FaQuestionCircle /> Quiz
@@ -162,16 +171,16 @@ export default function QuestionsPage() {
                         
                         <div className="mt-4">
                             <label className="block text-gray-700 text-sm mb-1">
-                                Number of questions (1-20)
+                                Number of questions (1-10)
                             </label>
                             <input
                                 type="number"
                                 min={1}
-                                max={20}
+                                max={10}
                                 value={generateCount}
                                 onChange={(e) => {
                                     const value = parseInt(e.target.value);
-                                    if (value >= 1 && value <= 20) {
+                                    if (value >= 1 && value <= 10) {
                                         setGenerateCount(value);
                                     }
                                 }}

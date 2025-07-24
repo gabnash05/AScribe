@@ -55,7 +55,7 @@ export async function getDocumentQuestions(
  * Creates new questions for a document using AI generation
  * @param userId - The ID of the user who owns the document
  * @param documentId - The ID of the document to create questions for
- * @param numQuestions - Number of questions to generate (1-20)
+ * @param numQuestions - Number of questions to generate (1-10)
  * @param idToken - The user's authentication token
  * @returns Promise<{message: string, count: number, documentId: string}>
  */

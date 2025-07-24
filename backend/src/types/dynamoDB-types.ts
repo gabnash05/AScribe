@@ -93,14 +93,14 @@ export interface SaveQuestionParams {
 export interface UpdateQuestionParams {
     tableName: string;
     documentId: string;
-    questionsId: string;
+    questionId: string;
     question: UpdateQuestionRecord;
 }
 
 export interface DeleteQuestionParams {
     tableName: string;
     documentId: string;
-    questionsId: string;
+    questionId: string;
 }
 
 // RECORDS
@@ -142,7 +142,7 @@ export interface ExtractedTextRecord {
     textFileKey: string; // S3 key of saved .md/.txt file
     averageConfidence: number; // Optional confidence score
     summaryId?: string; // Optional foreign key to summary
-    questionsId?: string[]; // Optional foreign keys to questions
+    questionId?: string[]; // Optional foreign keys to questions
     tokens?: number; // Optional token count
 }
 
@@ -153,7 +153,7 @@ export interface UpdateExtractedTextRecord {
     textFileKey?: string; // S3 key of saved .md/.txt file
     averageConfidence?: number;
     summaryId?: string; // Optional foreign key to summary
-    questionsId?: string[]; // Optional foreign keys to questions
+    questionId?: string[]; // Optional foreign keys to questions
     tokens?: number; // Optional token count
 }
 
@@ -170,7 +170,7 @@ export interface UpdateSummaryRecord {
 }
 
 export interface QuestionRecord {
-    questionsId: string; // Unique ID for the question
+    questionId: string; // Unique ID for the question
     documentId: string; // Foreign key to the document
     tags: string[]; // Optional tags for categorization
     question: string; // The actual question text

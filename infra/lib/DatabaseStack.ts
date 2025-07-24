@@ -69,7 +69,7 @@ export class DatabaseStack extends Stack {
         // - verified: boolean
         // - averageConfidence: number (optional, for confidence score)
         // - summaryId: string (optional)
-        // - questionsId: string[] (optional)f
+        // - questionId: string[] (optional)f
         // - tokens: number (optional, for token count)
 
         this.summariesTable = new Table (this, 'SummariesTable', {
@@ -89,13 +89,13 @@ export class DatabaseStack extends Stack {
         this.questionsTable = new Table(this, 'QuestionsTable', {
             tableName: `AScribeQuestions-${props.stage}`,
             partitionKey: { name: 'documentId', type: AttributeType.STRING },
-            sortKey: { name: 'questionsId', type: AttributeType.STRING },
+            sortKey: { name: 'questionId', type: AttributeType.STRING },
             removalPolicy: props.stage === 'dev' ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN, // TODO: Change to RETAIN in production
             billingMode: BillingMode.PAY_PER_REQUEST,
         });
 
         // Attributes:
-        // - questionsId: string (PK)
+        // - questionId: string (PK)
         // - documentId: string (Sort Key / FK)
         // - tags: string[] (optional, for categorization)
         // - question: string

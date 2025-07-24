@@ -6,9 +6,10 @@ interface FolderTreeProps {
     tree: any;
     path?: string;
     onFileSelect: (path: string, documentId: string) => void;
+    expandedPaths?: string[];
 }
 
-export default function FolderTree({ tree, path = "", onFileSelect }: FolderTreeProps) {
+export default function FolderTree({ tree, path = "", onFileSelect, expandedPaths = [] }: FolderTreeProps) {
     return (
         <ul className="mx-10">
             {Object.entries(tree).map(([key, value]) => {
@@ -33,6 +34,7 @@ export default function FolderTree({ tree, path = "", onFileSelect }: FolderTree
                             path={fullPath}
                             childrenTree={value}
                             onFileSelect={onFileSelect}
+                            expandedPaths={expandedPaths}
                         />
                     );
                 }

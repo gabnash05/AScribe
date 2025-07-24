@@ -61,7 +61,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         const questions: Question[] = response.Items.map(item => {
             const unmarshalled = unmarshall(item);
             return {
-                questionId: unmarshalled.questionsId,
+                questionId: unmarshalled.questionId,                
                 documentId: unmarshalled.documentId,
                 tags:  Array.from(unmarshalled.tags),
                 question: unmarshalled.question,

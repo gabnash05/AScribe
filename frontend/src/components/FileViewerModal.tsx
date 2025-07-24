@@ -54,6 +54,18 @@ export default function FileViewerModal({ documentId, filePath, onClose }: FileV
         loadDocument();
     }, [documentId, filePath, identityId, idToken]);
 
+    useEffect(() => {
+        return () => {
+            // Reset all state when the modal closes or when documentId changes
+            setContent("");
+            setDocumentTags([]);
+            setTagDraft("");
+            setCreatedAt(undefined);
+            setIsEditing(false);
+            setDraft("");
+        };
+    }, [documentId]);
+
     const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setTagDraft(e.target.value);
     };
@@ -164,7 +176,17 @@ export default function FileViewerModal({ documentId, filePath, onClose }: FileV
                             <FaTrash /> Delete
                         </button>
                         <button
-                            onClick={() => navigate(`/questions/${documentId}`)}
+                            onClick={() => navigate(`/questions/${documentId}`, {
+                                state: {
+                                    filePath: filePath,
+                                    documentId: documentId,
+                                    returnPath: '/explore',
+                                    // Include expanded paths in the navigation state
+                                    expandedPaths: filePath.split('/').slice(0, -1).map((_, i, arr) => 
+                                        arr.slice(0, i + 1).join('/')
+                                    )
+                                }
+                            })}
                             className="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600 flex items-center gap-2"
                         >
                             <FaQuestion /> Questions

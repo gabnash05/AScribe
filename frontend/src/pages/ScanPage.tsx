@@ -1,8 +1,20 @@
+import { useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { UploadForm } from "../components/UploadForm";
 import { DocumentViewer } from "../components/DocumentViewer";
+import { useDocument } from "../contexts/DocumentContext";
 
 export default function ScanPage() {
+    const { uploadCompleted, setUploadCompleted } = useDocument();
+    const documentRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (uploadCompleted && documentRef.current) {
+            documentRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+            setUploadCompleted(false);
+        }
+    }, [uploadCompleted]);
+
     return (
         <div className="min-h-screen bg-gray-100 p-4 md:p-8 space-y-6">
             <header className="sticky top-0 bg-gray-100 z-10 pt-4 pb-2">
@@ -26,7 +38,7 @@ export default function ScanPage() {
                     <UploadForm />
                 </div>
 
-                <div className="w-full">
+                <div className="w-full" ref={documentRef}>
                     <DocumentViewer />
                 </div>
             </div>

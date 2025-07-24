@@ -7,6 +7,7 @@ import DashboardPage from "./pages/DashboardPage";
 import ScanPage from "./pages/ScanPage";
 import ExplorePage from "./pages/ExplorePage";
 import QuestionsPage from "./pages/QuestionsPage";
+import QuizPage from "./pages/QuizPage";
 
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
@@ -25,6 +26,7 @@ export default function App() {
                             <Route path="/scan" element={<ScanPage />} />
                             <Route path="/explore" element={<ExplorePage />} />
                             <Route path="/questions/:documentId" element={<QuestionsPage />} />
+                            <Route path="/documents/:documentId/quiz" element={<QuizPage />} />
                         </Route>
 
                         {/* Catch-all redirect */}

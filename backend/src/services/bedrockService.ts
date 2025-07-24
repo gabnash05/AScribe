@@ -103,7 +103,7 @@ export async function generateSummary({
 
         const response = await bedrockClient.send(command);
         const decoded = JSON.parse(new TextDecoder().decode(response.body));
-        // MAY NOT WORK. REFER TO cleanExtractedText FUNCTION
+
         const content = decoded?.outputs?.[0]?.text || '';
 
         return { summary: content.trim() };
@@ -145,7 +145,7 @@ export async function generateQuestion({
                     content: [{ text: prompt }]
                 }],
                 inferenceConfig: {
-                    maxTokens: 500,
+                    maxTokens: 1000,
                     temperature: 0.7,
                     topP: 0.9,
                     topK: 20

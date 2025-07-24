@@ -113,13 +113,15 @@ export const handler = async (event: EventBridgeEvent<'Object Created', S3Object
         const currentFilePaths = await dynamoDBService.getDocumentFilePathFromDynamoDB({
             tableName: DOCUMENTS_TABLE_NAME,
             userId,
-        }); 
+        });
+
+        const filePaths = currentFilePaths.map(item => item.filePath);
 
         const cleaned = await bedrockService.cleanExtractedTextWithBedrock({
             modelId: BEDROCK_MODEL_ID,
             extractedText,
             averageConfidence,
-            currentFilePaths,
+            currentFilePaths: filePaths,
         });
         
         const { cleanedText, tags, suggestedFilePath } = cleaned;
