@@ -20,7 +20,24 @@ interface CreateQuestionsRequest {
 export const handler: APIGatewayProxyHandler = async (event) => {
     try {
         const { userId, documentId } = event.pathParameters || {};
-        const requestBody: CreateQuestionsRequest = JSON.parse(event.body || '{}');
+
+        let requestBody: CreateQuestionsRequest;
+        try {
+            requestBody = JSON.parse(event.body || '{}');
+        } catch (error) {
+            return {
+                statusCode: 400,
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Credentials': true,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    error: 'Invalid JSON in request body',
+                }),
+            };
+        }
+
         const { numQuestions } = requestBody;
 
         // Input validation

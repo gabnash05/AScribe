@@ -35,21 +35,38 @@ export async function finalizeDocument(
 ) {
     const url = buildUrl(`documents/${userId}/${documentId}/finalize`);
 
-    const res = await axios.post(
-        url,
-        {
-            userId,
-            documentId,
-            finalizedText,
-            newFilePath: newFilePath,
-            newTags: tags,
-        },
-        {
-            headers: { Authorization: `Bearer ${idToken}` },
+    try {
+        if (!userId || !documentId || !idToken || !finalizedText || !newFilePath || !Array.isArray(tags)) {
+            throw new Error("Invalid input parameters");
         }
-    );
 
-    return res.data;
+        if (tags.length > 10) {
+            throw new Error("Tags array cannot exceed 10 items");
+        }
+
+        const res = await axios.post(
+            url,
+            {
+                userId,
+                documentId,
+                finalizedText,
+                newFilePath: newFilePath,
+                newTags: tags,
+            },
+            {
+                headers: { Authorization: `Bearer ${idToken}` },
+            }
+        );
+
+        return res.data;
+    } catch (error) {
+        console.error("Error finalizing document:", error);
+        if (axios.isAxiosError(error) && error.response) {
+            throw new Error(`Error ${error.response.status}: ${error.response.data.message || "An error occurred."}`);
+        } else {
+            throw new Error("Network error: Unable to reach the server.");
+        }
+    }
 }
 
 export interface DocumentPathInfo {
@@ -101,23 +118,27 @@ export async function getDocumentFilePaths({
     }
 }
 
-export async function deleteDocumentFromDynamoDB(documentId: string, userId: string): Promise<void> {
+export async function deleteDocument(documentId: string, userId: string, idToken: string): Promise<void> {
+    const url = buildUrl(`documents/${userId}/${documentId}`);
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/documents/${userId}/${documentId}`, {
-            method: "DELETE",
+        const response = await axios.delete(url, {
             headers: {
+                Authorization: `Bearer ${idToken}`,
                 "Content-Type": "application/json",
             },
         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to delete document.');
+        if (response.status !== 200 && response.status !== 204) {
+            throw new Error(response.data?.error || 'Failed to delete document.');
         }
 
         console.log(`Document ${documentId} deleted successfully`);
     } catch (error) {
         console.error("Error deleting document:", error);
-        throw error;
+        if (axios.isAxiosError(error) && error.response) {
+            throw new Error(`Error ${error.response.status}: ${error.response.data.message || "An error occurred."}`);
+        } else {
+            throw new Error("Network error: Unable to reach the server.");
+        }
     }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getDocument, deleteDocumentFromDynamoDB } from "../api/documents";
+import { getDocument, deleteDocument } from "../api/documents";
 import { getDocumentTextFromS3 } from "../api/s3";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -78,7 +78,7 @@ export default function FileViewerModal({ documentId, filePath, onClose }: FileV
     const confirmDelete = async () => {
         setDeleting(true);
         try {
-            await deleteDocumentFromDynamoDB(documentId, identityId!);
+            await deleteDocument(documentId, identityId!, idToken!);
             onClose();
         } catch (err) {
             console.error("Failed to delete:", err);

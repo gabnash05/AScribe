@@ -113,7 +113,7 @@ export interface DocumentRecord {
     uploadDate: string; // ISO date string
     contentType: string; // MIME type of the file
     fileSize: number; // Size of the file in bytes
-    textExtractionMethod: 'sync' | 'async'; // Method used for text extraction
+    textExtractionMethod: 'manual' | 'sync' | 'async'; // Method used for text extraction
     status: DocumentStatus;
     tags: string[];
     extractedTextId: string;

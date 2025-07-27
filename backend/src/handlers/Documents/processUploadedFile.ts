@@ -13,12 +13,13 @@ const DOCUMENTS_TABLE_NAME = process.env.DOCUMENTS_TABLE || '';
 const EXTRACTED_TEXTS_TABLE_NAME = process.env.EXTRACTED_TEXTS_TABLE || '';
 
 const SYNC_FILE_TYPES = ['image/jpeg', 'image/png'];
-const MAX_SYNC_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const SKIP_FILE_TYPES = ['text/plain', 'text/markdown'];
+const MAX_SYNC_FILE_SIZE = 5 * 1024 * 1024; 
 
 interface ProcessDocumentResult {
     documentId: string;
     userId: string;
-    textExtractionMethod: 'sync' | 'async';
+    textExtractionMethod: 'manual' | 'sync' | 'async';
     textractJobId?: string;
     originalFileName: string;
     cleanedText?: string;
@@ -46,15 +47,19 @@ export const handler = async (event: EventBridgeEvent<'Object Created', S3Object
         const { userId, documentId, contentType, fileSize } = metadata;
         const originalFileName = key.split('/').pop() || 'unknown';
 
-        // Determine whether to use Sync or Async Textract
-        let extractionMethod: 'sync' | 'async';
+        // Determine extraction path
+        let extractionMethod: 'manual' | 'sync' | 'async';
         let textractJobId: string | undefined;
         let extractedText = '';
-        let averageConfidence = 0;
+        let averageConfidence = 1.0;
 
-        const isSync = SYNC_FILE_TYPES.includes(contentType) && fileSize <= MAX_SYNC_FILE_SIZE;
-
-        if (isSync) {
+        if (SKIP_FILE_TYPES.includes(contentType)) {
+            console.info('Skipping extraction for text file...');
+            const textBuffer = await s3Service.getDocumentFromS3({ bucket, key });
+            extractedText = textBuffer.toString('utf-8');
+            extractionMethod = 'manual';
+        } 
+        else if (SYNC_FILE_TYPES.includes(contentType) && fileSize <= MAX_SYNC_FILE_SIZE) {
             console.info('Using synchronous Textract method...');
             const documentBytes = await s3Service.getDocumentFromS3({ bucket, key });
             const result = await textractService.analyzeDocumentImage(documentBytes);
@@ -62,7 +67,8 @@ export const handler = async (event: EventBridgeEvent<'Object Created', S3Object
             extractedText = result.text;
             averageConfidence = result.confidence;
             extractionMethod = 'sync';
-        } else {
+        } 
+        else {
             console.info('Using asynchronous Textract method...');
             const asyncResult = await textractService.startDocumentTextDetection({
                 bucket,
@@ -71,13 +77,13 @@ export const handler = async (event: EventBridgeEvent<'Object Created', S3Object
                 documentId,
                 snsTopicArn: TEXTRACT_SNS_TOPIC_ARN,
                 roleArn: TEXTRACT_ROLE_ARN,
-            })
+            });
 
             textractJobId = asyncResult.jobId;
             extractionMethod = 'async';
         }
 
-        // If async, just store status and return
+        // Handle async early return
         if (extractionMethod === 'async') {
             await dynamoDBService.saveDocumentToDynamoDB({
                 tableName: DOCUMENTS_TABLE_NAME,
@@ -99,7 +105,6 @@ export const handler = async (event: EventBridgeEvent<'Object Created', S3Object
             });
 
             console.info('Document processing started asynchronously:', {
-                message: 'Async Textract started',
                 documentId,
                 userId,
                 textExtractionMethod: 'async',
@@ -109,7 +114,7 @@ export const handler = async (event: EventBridgeEvent<'Object Created', S3Object
             return;
         }
 
-        // Process the extracted text with Bedrock
+        // Run cleanup via Bedrock
         const currentFilePaths = await dynamoDBService.getDocumentFilePathFromDynamoDB({
             tableName: DOCUMENTS_TABLE_NAME,
             userId,
@@ -123,10 +128,10 @@ export const handler = async (event: EventBridgeEvent<'Object Created', S3Object
             averageConfidence,
             currentFilePaths: filePaths,
         });
-        
+
         const { cleanedText, tags, suggestedFilePath } = cleaned;
 
-        // Store Cleaned Text in S3
+        // Upload cleaned text
         const cleanedTextResult = await s3Service.uploadExtractedText({
             bucket: DOCUMENTS_BUCKET,
             documentId,
@@ -134,7 +139,7 @@ export const handler = async (event: EventBridgeEvent<'Object Created', S3Object
             extractedText: cleanedText,
         });
 
-        // Move file from temp to final S3 path
+        // Move original file from temp to final
         const movedFile = await s3Service.moveTempToFinalPath({
             bucket: DOCUMENTS_BUCKET,
             userId,
@@ -142,7 +147,7 @@ export const handler = async (event: EventBridgeEvent<'Object Created', S3Object
             tempKey: key
         });
 
-        // Save exttracted text metadata in DynamoDB
+        // Save extracted text
         await dynamoDBService.saveExtractedTextToDynamoDB({
             tableName: EXTRACTED_TEXTS_TABLE_NAME,
             extractedTextRecord: {
@@ -152,11 +157,11 @@ export const handler = async (event: EventBridgeEvent<'Object Created', S3Object
                 processedDate: getCurrentTimestamp(),
                 verified: false,
                 textFileKey: cleanedTextResult.key,
-                averageConfidence: averageConfidence,
+                averageConfidence,
             }
         });
 
-        // Save document metadata in DynamoDB
+        // Save document metadata
         await dynamoDBService.saveDocumentToDynamoDB({
             tableName: DOCUMENTS_TABLE_NAME,
             document: {
@@ -170,16 +175,16 @@ export const handler = async (event: EventBridgeEvent<'Object Created', S3Object
                 fileSize,
                 textExtractionMethod: extractionMethod,
                 status: 'cleaned',
-                tags: tags,
-                extractedTextId: cleanedTextResult.key, 
+                tags,
+                extractedTextId: cleanedTextResult.key,
                 textractJobId,
             }
         });
-        
+
         console.info('Document processed successfully:', {
             documentId,
             userId,
-            textExtractionMethod: 'sync',
+            textExtractionMethod: extractionMethod,
             originalFileName,
             tags,
             suggestedFilePath
@@ -188,7 +193,6 @@ export const handler = async (event: EventBridgeEvent<'Object Created', S3Object
     } catch (error) {
         console.error('Failed to process uploaded file:', error);
 
-        // Attempt to mark the document as 'failed'
         try {
             const bucket = event.detail.bucket.name;
             const key = decodeURIComponent(event.detail.object.key.replace(/\+/g, ' '));

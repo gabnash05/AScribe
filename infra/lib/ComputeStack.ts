@@ -174,7 +174,7 @@ export class ComputeStack extends Stack {
         this.initializeSearchIndexLambda = this.createLambda('initializeSearchIndex', 'Search', lambdaPropsWithSearch);
 
         // Textract Lambda functions
-        this.handleTextractJobCompletionLambda = this.createLambda('handleTextractJobCompletion', 'OCR', lambdaProps);
+        this.handleTextractJobCompletionLambda = this.createLambda('handleTextractJobCompletion', 'OCR', lambdaPropsWithBedrockAndSearch);
 
         // 
         // S3 Permissions
